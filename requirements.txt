@@ -1,0 +1,6 @@
+pygame
+numpy
+numba
+torch
+pytest
+pyinstaller

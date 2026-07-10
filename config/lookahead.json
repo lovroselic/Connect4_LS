@@ -1,0 +1,6 @@
+{
+    "minimum_depth": 3,
+    "maximum_depth": 13,
+    "default_depth": 9,
+    "warmup_depth": 3
+}
