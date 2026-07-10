@@ -1,33 +1,56 @@
+# =============================================================================
+# Connect4 LaughingSkull version
+# based on model trainde for kaggle competition
+# model training and details, as well as JS version - lookahead only:
+#   https://github.com/lovroselic/Connect4    
+# =============================================================================
 
-import torch
+
+# =============================================================================
+# # imports
+# =============================================================================
+
+#import torch
+#import pygame
 
 from app.version import __version__
-from agents.lookahead import Connect4Lookahead
-from agents.ppo import load_cnet192
-from app.paths import PPO_2004_PATH
+#from app.config import AppConfig
+#from app.paths import PPO_2004_PATH
+#from app.state import AppState, ScreenID
+
+from app.application import Application
+
+
+#from agents.lookahead import Connect4Lookahead
+#from agents.ppo import load_cnet192
+
+#from ui.theme import FONTS, THEME
+#from ui.widgets.button import Button
+#from ui.screens.base_screen import BaseScreen
+#from ui.screens.main_menu import MainMenuScreen
+#from ui.screens.match_setup import MatchSetupScreen
+#from ui.screens.settings_screen import SettingsScreen
+#from ui.screens.test_menu import TestMenuScreen
+
+# =============================================================================
+# # functions
+# =============================================================================
 
 
 
+
+# =============================================================================
+# # main
+# =============================================================================
 
 def main() -> None:
     print(f"Connect4_LS v{__version__} starting...")
-    lookahead = Connect4Lookahead()
+    
+    application = Application() 
+    application.run()
     
     
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
-    ppo_model, checkpoint = load_cnet192(
-       PPO_2004_PATH,
-       device=device,
-    )
-    ppo_model.eval()
-     
-    print("PPO model loaded.")
-    print(f"Checkpoint: {PPO_2004_PATH.name}")
-    print(f"Device: {device}")
-    print(f"Architecture: {checkpoint['cfg']['arch']}")
-    print(f"Episode: {checkpoint.get('episode', 'unknown')}")
-
 
 if __name__ == "__main__":
     main()
