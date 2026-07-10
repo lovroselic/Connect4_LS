@@ -1,0 +1,11 @@
+name: Connect4_LS
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - pytest
+  - numpy
+  - numba
+  - spyder-kernels
+prefix: C:\Users\Uporabnik\anaconda3\envs\Connect4_LS
