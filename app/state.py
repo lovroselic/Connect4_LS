@@ -1,22 +1,20 @@
+
 # app/state.py
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Optional
 
 
 class ScreenID(Enum):
     """
-    Identifiers for all application screens.
-
-    Screens are referenced through these values instead of importing
-    screen classes into one another.
+    Identifiers for application screens.
     """
 
     MAIN_MENU = auto()
     MATCH_SETUP = auto()
+    GAME = auto()
     SETTINGS = auto()
     TEST_MENU = auto()
 
@@ -24,15 +22,16 @@ class ScreenID(Enum):
 @dataclass(slots=True)
 class AppState:
     """
-    Shared application navigation state.
-
-    This state describes which screen is active and which screen should be
-    returned to when the user presses Back or Escape.
+    Mutable application navigation state.
     """
 
     current_screen: ScreenID = ScreenID.MAIN_MENU
-    previous_screen: Optional[ScreenID] = None
-    screen_history: list[ScreenID] = field(default_factory=list)
+    previous_screen: ScreenID | None = None
+
+    screen_history: list[ScreenID] = field(
+        default_factory=list
+    )
+
     running: bool = True
 
     def change_screen(
@@ -42,28 +41,15 @@ class AppState:
         remember_current: bool = True,
     ) -> None:
         """
-        Change the active screen.
-
-        Parameters
-        ----------
-        screen_id:
-            Screen that should become active.
-
-        remember_current:
-            When True, the current screen is added to the navigation history.
-            This allows go_back() to return to it later.
+        Change the active screen and optionally store navigation history.
         """
-        if not isinstance(screen_id, ScreenID):
-            raise TypeError(
-                "screen_id must be an instance of ScreenID, "
-                f"got {type(screen_id).__name__}"
-            )
-
-        if screen_id == self.current_screen:
+        if screen_id is self.current_screen:
             return
 
         if remember_current:
-            self.screen_history.append(self.current_screen)
+            self.screen_history.append(
+                self.current_screen
+            )
 
         self.previous_screen = self.current_screen
         self.current_screen = screen_id
@@ -72,18 +58,15 @@ class AppState:
         """
         Return to the most recently visited screen.
 
-        Returns
-        -------
-        bool
-            True when navigation occurred, otherwise False.
+        Returns False when no previous screen exists.
         """
         if not self.screen_history:
             return False
 
-        destination = self.screen_history.pop()
+        target = self.screen_history.pop()
 
         self.previous_screen = self.current_screen
-        self.current_screen = destination
+        self.current_screen = target
 
         return True
 
@@ -96,8 +79,5 @@ class AppState:
         self.screen_history.clear()
 
     def request_exit(self) -> None:
-        """
-        Signal that the application main loop should stop.
-        """
         self.running = False
 

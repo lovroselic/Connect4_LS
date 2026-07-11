@@ -11,6 +11,7 @@ from ui.theme import FONTS, THEME
 from ui.widgets.button import Button
 from ui.widgets.selector import Selector
 from ui.widgets.text_input import TextInput
+from app.lookahead_config import LOOKAHEAD_CONFIG
 
 
 class MatchSetupScreen(BaseScreen):
@@ -21,7 +22,9 @@ class MatchSetupScreen(BaseScreen):
     Lookahead, or PPO players.
     """
 
-    LOOKAHEAD_DEPTHS = tuple(range(3, 14))
+    LOOKAHEAD_DEPTHS = (
+        LOOKAHEAD_CONFIG.selectable_depths
+    )
 
     def __init__(self, application) -> None:
         super().__init__(application)
@@ -33,13 +36,20 @@ class MatchSetupScreen(BaseScreen):
         self.player_one_config = PlayerConfig(
             player_type=PlayerType.HUMAN,
             name="Player 1",
-            lookahead_depth=7,
+            lookahead_depth=(
+                LOOKAHEAD_CONFIG.default_depth
+            ),
         )
 
         self.player_two_config = PlayerConfig(
             player_type=PlayerType.LOOKAHEAD,
-            name="Lookahead 7",
-            lookahead_depth=7,
+            name=(
+                f"Lookahead "
+                f"{LOOKAHEAD_CONFIG.default_depth}"
+            ),
+            lookahead_depth=(
+                LOOKAHEAD_CONFIG.default_depth
+            ),
         )
 
         self.player_one_human_name = "Player 1"
@@ -716,17 +726,19 @@ class MatchSetupScreen(BaseScreen):
             self.player_two_human_name
         )
 
+
     def _start_match(self) -> None:
         """
-        Temporary scaffold callback.
-
-        The real implementation will construct Player instances and open the
-        game screen.
+        Validate the selected configurations and open the game screen.
         """
         self.player_one_config.validate()
         self.player_two_config.validate()
+    
+        self.application.start_match(
+            self.player_one_config,
+            self.player_two_config,
+            starting_player=1,
+        )
 
-        print("Start Match requested")
-        print("Player 1:", self.player_one_config)
-        print("Player 2:", self.player_two_config)
+
 

@@ -1,3 +1,4 @@
+
 # app/application.py
 
 from __future__ import annotations
@@ -7,71 +8,167 @@ import pygame
 from app import __version__
 from app.config import AppConfig
 from app.state import AppState, ScreenID
-from ui.screens.base_screen import BaseScreen
+from game.match import Connect4Match
+from players import PlayerConfig, PlayerFactory
+from ui.screens.game_screen import GameScreen
 from ui.screens.main_menu import MainMenuScreen
 from ui.screens.match_setup import MatchSetupScreen
 from ui.screens.settings_screen import SettingsScreen
 from ui.screens.test_menu import TestMenuScreen
-from ui.theme import FONTS, THEME
+from ui.theme import FONTS
 
 
 class Application:
     """
-    Main Connect4_LS application controller.
+    Main Connect4_LS application.
 
-    The Application owns the Pygame lifecycle, window, clock, navigation
-    state, screen registry, and main loop.
+    Owns the Pygame window, screens, navigation, player factory,
+    event loop, and application shutdown.
     """
 
-    MIN_WINDOW_WIDTH = 800
-    MIN_WINDOW_HEIGHT = 600
+    MINIMUM_WIDTH = 800
+    MINIMUM_HEIGHT = 600
 
-    def __init__(self, config: AppConfig | None = None) -> None:
-        self.config = config or AppConfig.load()
+    def __init__(self) -> None:
+        self.config = AppConfig.load()
         self.state = AppState()
 
-        self.screen: pygame.Surface
-        self.clock: pygame.time.Clock
+        pygame.init()
 
-        self.screens: dict[ScreenID, BaseScreen] = {}
-        self.active_screen: BaseScreen | None = None
+        self.screen = self._create_display(
+            self.config.window_width,
+            self.config.window_height,
+        )
 
-        self._pygame_initialized = False
+        pygame.display.set_caption(
+            f"{self.config.window_title} v{__version__}"
+        )
 
-        self._initialize_pygame()
-        self._create_screens()
-        self._activate_initial_screen()
+        self.clock = pygame.time.Clock()
+
+        self.player_factory = PlayerFactory()
+
+        self.screens = {
+            ScreenID.MAIN_MENU: MainMenuScreen(self),
+            ScreenID.MATCH_SETUP: MatchSetupScreen(self),
+            ScreenID.GAME: GameScreen(self),
+            ScreenID.SETTINGS: SettingsScreen(self),
+        }
+
+        if self.config.show_test_menu:
+            self.screens[ScreenID.TEST_MENU] = (
+                TestMenuScreen(self)
+            )
+
+        self.active_screen = self.screens[
+            self.state.current_screen
+        ]
+
+        self.active_screen.on_enter()
+
+    # ------------------------------------------------------------------
+    # Main loop
+    # ------------------------------------------------------------------
 
     def run(self) -> None:
         """
-        Run the main application loop.
-
-        Pygame events, screen updates, drawing, and frame limiting are all
-        coordinated here.
+        Run the application until exit is requested.
         """
         try:
             while self.state.running:
-                delta_time = self.clock.tick(
-                    self.config.target_fps
-                ) / 1000.0
+                delta_time = (
+                    self.clock.tick(
+                        self.config.target_fps
+                    )
+                    / 1000.0
+                )
 
                 self._process_events()
 
                 if not self.state.running:
                     break
 
-                if self.active_screen is None:
-                    raise RuntimeError(
-                        "Application has no active screen."
-                    )
+                self.active_screen.update(
+                    delta_time
+                )
 
-                self.active_screen.update(delta_time)
-                self.active_screen.draw(self.screen)
+                self.active_screen.draw(
+                    self.screen
+                )
 
                 pygame.display.flip()
 
         finally:
             self.shutdown()
+
+    def _process_events(self) -> None:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.request_exit()
+                return
+
+            if event.type == pygame.VIDEORESIZE:
+                self._handle_resize(
+                    event.w,
+                    event.h,
+                )
+                continue
+
+            self.active_screen.handle_event(
+                event
+            )
+
+    # ------------------------------------------------------------------
+    # Match creation
+    # ------------------------------------------------------------------
+
+    def start_match(
+        self,
+        player_one_config: PlayerConfig,
+        player_two_config: PlayerConfig,
+        *,
+        starting_player: int = 1,
+    ) -> None:
+        """
+        Construct and open a new Connect Four match.
+        """
+        player_one, player_two = (
+            self.player_factory.create_pair(
+                player_one_config,
+                player_two_config,
+            )
+        )
+
+        match = Connect4Match(
+            player_one,
+            player_two,
+            starting_player=starting_player,
+        )
+
+        game_screen = self.screens[
+            ScreenID.GAME
+        ]
+
+        if not isinstance(
+            game_screen,
+            GameScreen,
+        ):
+            raise RuntimeError(
+                "Registered GAME screen is not a GameScreen."
+            )
+
+        game_screen.set_match(
+            match,
+            start_immediately=True,
+        )
+
+        self.change_screen(
+            ScreenID.GAME
+        )
+
+    # ------------------------------------------------------------------
+    # Navigation
+    # ------------------------------------------------------------------
 
     def change_screen(
         self,
@@ -80,46 +177,38 @@ class Application:
         remember_current: bool = True,
     ) -> None:
         """
-        Change to another registered screen.
-
-        Parameters
-        ----------
-        screen_id:
-            Destination screen.
-
-        remember_current:
-            When True, store the current screen in navigation history.
+        Change the visible application screen.
         """
         if screen_id not in self.screens:
-            raise KeyError(
-                f"Screen is not registered: {screen_id.name}"
+            raise ValueError(
+                f"Screen is not registered: {screen_id}"
             )
 
-        if screen_id == self.state.current_screen:
+        if screen_id is self.state.current_screen:
             return
 
-        if self.active_screen is not None:
-            self.active_screen.on_exit()
+        self.active_screen.on_exit()
 
         self.state.change_screen(
             screen_id,
             remember_current=remember_current,
         )
 
-        self.active_screen = self.screens[screen_id]
+        self.active_screen = self.screens[
+            self.state.current_screen
+        ]
+
         self.active_screen.on_enter()
 
     def go_back(self) -> None:
         """
-        Return to the previously visited screen.
-
-        When no previous screen exists, return to the main menu. Escape from
-        the main menu itself is handled by MainMenuScreen and exits instead.
+        Return to the previous screen.
         """
-        if self.active_screen is not None:
-            self.active_screen.on_exit()
+        self.active_screen.on_exit()
 
-        if not self.state.go_back():
+        changed = self.state.go_back()
+
+        if not changed:
             self.state.go_to_main_menu()
 
         self.active_screen = self.screens[
@@ -130,10 +219,15 @@ class Application:
 
     def go_to_main_menu(self) -> None:
         """
-        Return directly to the main menu and clear navigation history.
+        Return directly to the main menu.
         """
-        if self.active_screen is not None:
-            self.active_screen.on_exit()
+        if (
+            self.state.current_screen
+            is ScreenID.MAIN_MENU
+        ):
+            return
+
+        self.active_screen.on_exit()
 
         self.state.go_to_main_menu()
 
@@ -144,109 +238,39 @@ class Application:
         self.active_screen.on_enter()
 
     def request_exit(self) -> None:
-        """
-        Request that the main loop stop after the current event cycle.
-        """
         self.state.request_exit()
 
-    def shutdown(self) -> None:
-        """
-        Release Pygame resources cleanly.
+    # ------------------------------------------------------------------
+    # Display
+    # ------------------------------------------------------------------
 
-        Safe to call more than once.
-        """
-        if not self._pygame_initialized:
-            return
+    def _create_display(
+        self,
+        width: int,
+        height: int,
+    ) -> pygame.Surface:
+        width = max(
+            self.MINIMUM_WIDTH,
+            int(width),
+        )
 
-        if self.active_screen is not None:
-            self.active_screen.on_exit()
+        height = max(
+            self.MINIMUM_HEIGHT,
+            int(height),
+        )
 
-        FONTS.clear()
-        pygame.quit()
-
-        self._pygame_initialized = False
-
-    def _initialize_pygame(self) -> None:
-        """
-        Initialize Pygame and create the application window.
-        """
-        pygame.init()
-
-        if not pygame.get_init():
-            raise RuntimeError(
-                "Pygame failed to initialize."
-            )
-
-        self._pygame_initialized = True
-
-        display_flags = pygame.RESIZABLE
+        flags = pygame.RESIZABLE
 
         if self.config.fullscreen:
-            display_flags |= pygame.FULLSCREEN
+            flags |= pygame.FULLSCREEN
 
-        self.screen = pygame.display.set_mode(
+        return pygame.display.set_mode(
             (
-                self.config.window_width,
-                self.config.window_height,
+                width,
+                height,
             ),
-            display_flags,
+            flags,
         )
-
-        pygame.display.set_caption(
-            f"{self.config.window_title} v{__version__}"
-        )
-
-        self.clock = pygame.time.Clock()
-
-    def _create_screens(self) -> None:
-        """
-        Construct and register all application screens.
-        """
-        self.screens = {
-            ScreenID.MAIN_MENU: MainMenuScreen(self),
-            ScreenID.MATCH_SETUP: MatchSetupScreen(self),
-            ScreenID.SETTINGS: SettingsScreen(self),
-        }
-
-        if self.config.show_test_menu:
-            self.screens[
-                ScreenID.TEST_MENU
-            ] = TestMenuScreen(self)
-
-    def _activate_initial_screen(self) -> None:
-        """
-        Activate the screen defined by the initial AppState.
-        """
-        initial_screen_id = self.state.current_screen
-
-        if initial_screen_id not in self.screens:
-            initial_screen_id = ScreenID.MAIN_MENU
-            self.state.go_to_main_menu()
-
-        self.active_screen = self.screens[
-            initial_screen_id
-        ]
-
-        self.active_screen.on_enter()
-
-    def _process_events(self) -> None:
-        """
-        Process all pending Pygame events.
-        """
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                self.request_exit()
-                continue
-
-            if event.type == pygame.VIDEORESIZE:
-                self._handle_resize(
-                    event.w,
-                    event.h,
-                )
-                continue
-
-            if self.active_screen is not None:
-                self.active_screen.handle_event(event)
 
     def _handle_resize(
         self,
@@ -254,27 +278,46 @@ class Application:
         height: int,
     ) -> None:
         """
-        Resize the application window and refresh all screen layouts.
+        Recreate the resizable window and refresh all screen layouts.
         """
         width = max(
-            self.MIN_WINDOW_WIDTH,
+            self.MINIMUM_WIDTH,
             int(width),
         )
 
         height = max(
-            self.MIN_WINDOW_HEIGHT,
+            self.MINIMUM_HEIGHT,
             int(height),
         )
 
         self.screen = pygame.display.set_mode(
-            (width, height),
+            (
+                width,
+                height,
+            ),
             pygame.RESIZABLE,
         )
 
         self.config.window_width = width
         self.config.window_height = height
 
-        for screen in self.screens.values():
-            screen.screen = self.screen
-            screen.refresh_layout()
+        for application_screen in self.screens.values():
+            application_screen.screen = self.screen
+            application_screen.refresh_layout()
+
+    # ------------------------------------------------------------------
+    # Shutdown
+    # ------------------------------------------------------------------
+
+    def shutdown(self) -> None:
+        """
+        Release application resources.
+        """
+        try:
+            self.active_screen.on_exit()
+        except Exception:
+            pass
+
+        FONTS.clear()
+        pygame.quit()
 

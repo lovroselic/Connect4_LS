@@ -21,6 +21,10 @@ from players.base import (
 class LookaheadPlayer(Player):
     """
     Player controlled by the Numba Connect Four lookahead engine.
+
+    The main move search uses the configured depth. Optional per-column action
+    scores are disabled by default because calculating them performs several
+    additional searches and becomes very expensive at high depths.
     """
 
     def __init__(
@@ -29,7 +33,8 @@ class LookaheadPlayer(Player):
         config: PlayerConfig,
         *,
         engine: Connect4Lookahead | None = None,
-        include_action_scores: bool = True,
+        include_action_scores: bool = False,
+        action_score_depth: int | None = None,
     ) -> None:
         if config.player_type is not PlayerType.LOOKAHEAD:
             raise ValueError(
@@ -49,6 +54,12 @@ class LookaheadPlayer(Player):
 
         self.include_action_scores = bool(
             include_action_scores
+        )
+
+        self.action_score_depth = (
+            None
+            if action_score_depth is None
+            else max(1, int(action_score_depth))
         )
 
         self._cancel_requested = False
@@ -85,7 +96,7 @@ class LookaheadPlayer(Player):
             return None
 
         numpy_board = board.to_numpy(
-            dtype=np.int8
+            dtype=np.int8,
         )
 
         started_at = perf_counter()
@@ -114,10 +125,16 @@ class LookaheadPlayer(Player):
         action_scores: tuple[float, ...] | None = None
 
         if self.include_action_scores:
+            score_depth = (
+                self.action_score_depth
+                if self.action_score_depth is not None
+                else self.depth
+            )
+
             raw_scores = self.engine.n_step_action_scores(
                 numpy_board,
                 player=self.player_id,
-                depth=self.depth,
+                depth=score_depth,
             )
 
             action_scores = tuple(

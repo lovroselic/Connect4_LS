@@ -1,3 +1,4 @@
+
 # ui/theme.py
 
 from __future__ import annotations
@@ -33,6 +34,7 @@ class Theme:
     panel_border: Color = (75, 87, 112)
 
     overlay: ColorAlpha = (0, 0, 0, 170)
+    shadow: Color = (9, 12, 18)
 
     # ------------------------------------------------------------
     # Text
@@ -75,7 +77,10 @@ class Theme:
 
     board_background: Color = (39, 94, 181)
     board_border: Color = (25, 65, 132)
-    board_slot: Color = (16, 20, 29)
+
+    board_hole: Color = (16, 20, 29)
+    board_hole_shadow: Color = (8, 11, 17)
+    board_cell_border: Color = (12, 16, 24)
 
     player_one: Color = (226, 67, 67)
     player_one_highlight: Color = (255, 105, 96)
@@ -83,6 +88,10 @@ class Theme:
     player_two: Color = (241, 198, 61)
     player_two_highlight: Color = (255, 224, 105)
 
+    win_highlight: Color = (113, 238, 164)
+
+    # Backward-compatible aliases
+    board_slot: Color = (16, 20, 29)
     winning_marker: Color = (113, 238, 164)
 
     # ------------------------------------------------------------
@@ -130,14 +139,17 @@ THEME: Final[Theme] = Theme()
 class FontCache:
     """
     Lazily creates and caches Pygame font objects.
-
-    Pygame font creation is not expensive enough to be dramatic, but there is
-    no reason to recreate the same font every frame.
     """
 
-    def __init__(self, font_name: str | None = None) -> None:
+    def __init__(
+        self,
+        font_name: str | None = None,
+    ) -> None:
         self.font_name = font_name
-        self._fonts: dict[tuple[int, bool, bool], pygame.font.Font] = {}
+        self._fonts: dict[
+            tuple[int, bool, bool],
+            pygame.font.Font,
+        ] = {}
 
     def get(
         self,
@@ -149,12 +161,21 @@ class FontCache:
         """
         Return a cached font with the requested properties.
         """
-        key = (int(size), bool(bold), bool(italic))
+        key = (
+            int(size),
+            bool(bold),
+            bool(italic),
+        )
 
         if key not in self._fonts:
-            font = pygame.font.Font(self.font_name, key[0])
+            font = pygame.font.Font(
+                self.font_name,
+                key[0],
+            )
+
             font.set_bold(key[1])
             font.set_italic(key[2])
+
             self._fonts[key] = font
 
         return self._fonts[key]
@@ -169,43 +190,42 @@ class FontCache:
 FONTS: Final[FontCache] = FontCache()
 
 
-def brighten(color: Color, amount: int = 20) -> Color:
+def brighten(
+    color: Color,
+    amount: int = 20,
+) -> Color:
     """
     Return a brighter RGB colour.
-
-    Parameters
-    ----------
-    color:
-        Source RGB colour.
-
-    amount:
-        Value added to each channel.
     """
     return tuple(
-        min(255, channel + int(amount))
+        min(
+            255,
+            channel + int(amount),
+        )
         for channel in color
     )
 
 
-def darken(color: Color, amount: int = 20) -> Color:
+def darken(
+    color: Color,
+    amount: int = 20,
+) -> Color:
     """
     Return a darker RGB colour.
-
-    Parameters
-    ----------
-    color:
-        Source RGB colour.
-
-    amount:
-        Value removed from each channel.
     """
     return tuple(
-        max(0, channel - int(amount))
+        max(
+            0,
+            channel - int(amount),
+        )
         for channel in color
     )
 
 
-def with_alpha(color: Color, alpha: int) -> ColorAlpha:
+def with_alpha(
+    color: Color,
+    alpha: int,
+) -> ColorAlpha:
     """
     Convert an RGB colour into an RGBA colour.
     """
@@ -213,6 +233,12 @@ def with_alpha(color: Color, alpha: int) -> ColorAlpha:
         color[0],
         color[1],
         color[2],
-        max(0, min(int(alpha), 255)),
+        max(
+            0,
+            min(
+                int(alpha),
+                255,
+            ),
+        ),
     )
 

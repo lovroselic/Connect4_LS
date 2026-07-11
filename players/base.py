@@ -1,3 +1,4 @@
+
 # players/base.py
 
 from __future__ import annotations
@@ -6,6 +7,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any
+
+from app.lookahead_config import LOOKAHEAD_CONFIG
 
 
 class PlayerType(Enum):
@@ -19,9 +22,6 @@ class PlayerType(Enum):
 
     @property
     def display_name(self) -> str:
-        """
-        User-facing player type name.
-        """
         return {
             PlayerType.HUMAN: "Human",
             PlayerType.LOOKAHEAD: "Lookahead",
@@ -33,15 +33,14 @@ class PlayerType(Enum):
 class PlayerConfig:
     """
     Configuration used to construct one match participant.
-
-    Not every field applies to every player type. For example, depth is used
-    by Lookahead players, while model_name applies to PPO players.
     """
 
     player_type: PlayerType = PlayerType.HUMAN
     name: str = "Human"
 
-    lookahead_depth: int = 7
+    lookahead_depth: int = (
+        LOOKAHEAD_CONFIG.default_depth
+    )
 
     model_name: str = "PPO_2004.pt"
     deterministic: bool = True
@@ -50,39 +49,54 @@ class PlayerConfig:
         """
         Normalize configuration values in place.
         """
-        if not isinstance(self.player_type, PlayerType):
+        if not isinstance(
+            self.player_type,
+            PlayerType,
+        ):
             try:
-                self.player_type = PlayerType(str(self.player_type))
-            except (TypeError, ValueError):
+                self.player_type = PlayerType(
+                    str(self.player_type)
+                )
+            except (
+                TypeError,
+                ValueError,
+            ):
                 self.player_type = PlayerType.HUMAN
 
         if not isinstance(self.name, str):
-            self.name = self.player_type.display_name
+            self.name = (
+                self.player_type.display_name
+            )
 
         self.name = self.name.strip()
 
         if not self.name:
-            self.name = self.player_type.display_name
+            self.name = (
+                self.player_type.display_name
+            )
 
-        try:
-            self.lookahead_depth = int(self.lookahead_depth)
-        except (TypeError, ValueError):
-            self.lookahead_depth = 7
-
-        self.lookahead_depth = max(
-            3,
-            min(self.lookahead_depth, 13),
+        self.lookahead_depth = (
+            LOOKAHEAD_CONFIG.clamp_depth(
+                self.lookahead_depth
+            )
         )
 
-        if not isinstance(self.model_name, str):
+        if not isinstance(
+            self.model_name,
+            str,
+        ):
             self.model_name = "PPO_2004.pt"
 
-        self.model_name = self.model_name.strip()
+        self.model_name = (
+            self.model_name.strip()
+        )
 
         if not self.model_name:
             self.model_name = "PPO_2004.pt"
 
-        self.deterministic = bool(self.deterministic)
+        self.deterministic = bool(
+            self.deterministic
+        )
 
     def copy(self) -> "PlayerConfig":
         """
@@ -101,9 +115,6 @@ class PlayerConfig:
 class MoveAnalysis:
     """
     Optional diagnostic information produced when selecting a move.
-
-    This structure will feed the analysis panel for both AI and human players.
-    Human analysis may be calculated by an assisting agent after the move.
     """
 
     selected_column: int | None = None
@@ -133,9 +144,6 @@ class MoveResult:
 class Player(ABC):
     """
     Common interface implemented by all match participants.
-
-    The match controller will interact with Player objects without needing to
-    know whether the move comes from a human, lookahead search, or PPO model.
     """
 
     def __init__(
@@ -180,8 +188,6 @@ class Player(ABC):
     def cancel(self) -> None:
         """
         Request cancellation of any pending move calculation.
-
-        Human players and synchronous agents may leave this as a no-op.
         """
         pass
 
@@ -192,9 +198,6 @@ class Player(ABC):
     ) -> MoveResult | None:
         """
         Select a move from the supplied board state.
-
-        Human players may return None until input has been supplied.
-        AI players should return a MoveResult.
         """
         raise NotImplementedError
 
