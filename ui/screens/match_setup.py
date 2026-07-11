@@ -1,25 +1,143 @@
+
 # ui/screens/match_setup.py
 
 from __future__ import annotations
 
 import pygame
 
+from players import PlayerConfig, PlayerType
 from ui.screens.base_screen import BaseScreen
 from ui.theme import FONTS, THEME
 from ui.widgets.button import Button
+from ui.widgets.selector import Selector
+from ui.widgets.text_input import TextInput
 
 
 class MatchSetupScreen(BaseScreen):
     """
     Match setup screen.
 
-    This initial scaffold displays placeholder panels for Player 1 and
-    Player 2, plus Start Match and Back buttons. Player selectors and AI
-    configuration will be added later.
+    Allows independent configuration of Player 1 and Player 2 as Human,
+    Lookahead, or PPO players.
     """
+
+    LOOKAHEAD_DEPTHS = tuple(range(3, 14))
 
     def __init__(self, application) -> None:
         super().__init__(application)
+
+        # --------------------------------------------------------
+        # Player configuration
+        # --------------------------------------------------------
+
+        self.player_one_config = PlayerConfig(
+            player_type=PlayerType.HUMAN,
+            name="Player 1",
+            lookahead_depth=7,
+        )
+
+        self.player_two_config = PlayerConfig(
+            player_type=PlayerType.LOOKAHEAD,
+            name="Lookahead 7",
+            lookahead_depth=7,
+        )
+
+        self.player_one_human_name = "Player 1"
+        self.player_two_human_name = "Player 2"
+
+        # --------------------------------------------------------
+        # Player type selectors
+        # --------------------------------------------------------
+
+        player_type_options = [
+            PlayerType.HUMAN,
+            PlayerType.LOOKAHEAD,
+            PlayerType.PPO,
+        ]
+
+        self.player_one_type_selector = Selector(
+            rect=(0, 0, 320, THEME.button_height),
+            options=player_type_options,
+            selected_index=player_type_options.index(
+                self.player_one_config.player_type
+            ),
+            on_change=self._on_player_one_type_changed,
+            formatter=lambda value: value.display_name,
+        )
+
+        self.player_two_type_selector = Selector(
+            rect=(0, 0, 320, THEME.button_height),
+            options=player_type_options,
+            selected_index=player_type_options.index(
+                self.player_two_config.player_type
+            ),
+            on_change=self._on_player_two_type_changed,
+            formatter=lambda value: value.display_name,
+        )
+
+        # --------------------------------------------------------
+        # Lookahead depth selectors
+        # --------------------------------------------------------
+
+        self.player_one_depth_selector = Selector(
+            rect=(0, 0, 240, THEME.button_height),
+            options=self.LOOKAHEAD_DEPTHS,
+            selected_index=self.LOOKAHEAD_DEPTHS.index(
+                self.player_one_config.lookahead_depth
+            ),
+            on_change=self._on_player_one_depth_changed,
+            formatter=lambda depth: f"Depth {depth}",
+            visible=False,
+        )
+
+        self.player_two_depth_selector = Selector(
+            rect=(0, 0, 240, THEME.button_height),
+            options=self.LOOKAHEAD_DEPTHS,
+            selected_index=self.LOOKAHEAD_DEPTHS.index(
+                self.player_two_config.lookahead_depth
+            ),
+            on_change=self._on_player_two_depth_changed,
+            formatter=lambda depth: f"Depth {depth}",
+            visible=True,
+        )
+
+        self.selectors = [
+            self.player_one_type_selector,
+            self.player_two_type_selector,
+            self.player_one_depth_selector,
+            self.player_two_depth_selector,
+        ]
+
+        # --------------------------------------------------------
+        # Human name inputs
+        # --------------------------------------------------------
+
+        self.player_one_name_input = TextInput(
+            rect=(0, 0, 320, THEME.button_height),
+            text=self.player_one_human_name,
+            placeholder="Player 1 name",
+            on_change=self._on_player_one_name_changed,
+            max_length=24,
+            visible=True,
+        )
+
+        self.player_two_name_input = TextInput(
+            rect=(0, 0, 320, THEME.button_height),
+            text=self.player_two_human_name,
+            placeholder="Player 2 name",
+            on_change=self._on_player_two_name_changed,
+            max_length=24,
+            visible=False,
+        )
+
+        self.text_inputs = [
+            self.player_one_name_input,
+            self.player_two_name_input,
+        ]
+
+        # --------------------------------------------------------
+        # Buttons
+        # --------------------------------------------------------
 
         self.start_button = Button(
             rect=(
@@ -30,7 +148,6 @@ class MatchSetupScreen(BaseScreen):
             ),
             text="Start Match",
             callback=self._start_match,
-            enabled=False,
         )
 
         self.back_button = Button(
@@ -41,7 +158,7 @@ class MatchSetupScreen(BaseScreen):
                 THEME.small_button_height,
             ),
             text="Back",
-            callback=self._go_back,
+            callback=self.application.go_back,
         )
 
         self.buttons = [
@@ -49,24 +166,45 @@ class MatchSetupScreen(BaseScreen):
             self.back_button,
         ]
 
+        # --------------------------------------------------------
+        # Layout rectangles
+        # --------------------------------------------------------
+
         self.player_one_panel = pygame.Rect(0, 0, 0, 0)
         self.player_two_panel = pygame.Rect(0, 0, 0, 0)
 
         self.refresh_layout()
+        self._refresh_player_controls()
 
     def handle_event(self, event: pygame.event.Event) -> None:
         """
         Process keyboard and mouse input.
         """
+
+        # Focused text inputs get first chance to consume keyboard input.
+        for text_input in self.text_inputs:
+            if text_input.handle_event(event):
+                return
+
         super().handle_event(event)
 
         for button in self.buttons:
             if button.handle_event(event):
-                break
+                return
+
+        # Mouse interaction only for selectors.
+        if event.type in (
+            pygame.MOUSEMOTION,
+            pygame.MOUSEBUTTONDOWN,
+            pygame.MOUSEBUTTONUP,
+        ):
+            for selector in self.selectors:
+                if selector.handle_event(event):
+                    return
 
     def update(self, delta_time: float) -> None:
         """
-        Update button hover states.
+        Update hover states.
         """
         del delta_time
 
@@ -74,6 +212,12 @@ class MatchSetupScreen(BaseScreen):
 
         for button in self.buttons:
             button.update(mouse_position)
+
+        for selector in self.selectors:
+            selector.update(mouse_position)
+
+        for text_input in self.text_inputs:
+            text_input.update(mouse_position)
 
     def draw(self, surface: pygame.Surface) -> None:
         """
@@ -87,29 +231,35 @@ class MatchSetupScreen(BaseScreen):
         self.draw_title(
             surface,
             "Match Setup",
-            y=75,
+            y=70,
         )
 
         self.draw_subtitle(
             surface,
-            "Choose who plays, then let poor strategic decisions begin.",
-            y=125,
+            "Choose two players and permit the strategic disagreement.",
+            y=118,
         )
 
         self._draw_player_panel(
             surface,
             self.player_one_panel,
             title="Player 1",
-            subtitle="Player selection will be added next.",
+            config=self.player_one_config,
             accent_color=THEME.player_one,
+            type_selector=self.player_one_type_selector,
+            depth_selector=self.player_one_depth_selector,
+            name_input=self.player_one_name_input,
         )
 
         self._draw_player_panel(
             surface,
             self.player_two_panel,
             title="Player 2",
-            subtitle="Human, PPO, or depth-based lookahead.",
+            config=self.player_two_config,
             accent_color=THEME.player_two,
+            type_selector=self.player_two_type_selector,
+            depth_selector=self.player_two_depth_selector,
+            name_input=self.player_two_name_input,
         )
 
         for button in self.buttons:
@@ -117,18 +267,18 @@ class MatchSetupScreen(BaseScreen):
 
         self.draw_footer(
             surface,
-            "Escape or Back returns to the previous screen.",
+            "Human vs Human, Human vs AI, and AI vs AI are all permitted.",
         )
 
     def refresh_layout(self) -> None:
         """
-        Recalculate panel and button positions.
+        Recalculate player-panel and control positions.
         """
         super().refresh_layout()
 
         content_width = min(
             self.width - 2 * THEME.screen_margin,
-            1050,
+            1080,
         )
 
         panel_gap = THEME.section_spacing
@@ -138,15 +288,15 @@ class MatchSetupScreen(BaseScreen):
         ) // 2
 
         panel_height = min(
-            360,
-            max(260, self.height - 330),
+            410,
+            max(320, self.height - 315),
         )
 
         start_x = (
             self.width - content_width
         ) // 2
 
-        panel_y = 170
+        panel_y = 150
 
         self.player_one_panel = pygame.Rect(
             start_x,
@@ -162,9 +312,23 @@ class MatchSetupScreen(BaseScreen):
             panel_height,
         )
 
+        self._layout_panel_controls(
+            self.player_one_panel,
+            self.player_one_type_selector,
+            self.player_one_depth_selector,
+            self.player_one_name_input,
+        )
+
+        self._layout_panel_controls(
+            self.player_two_panel,
+            self.player_two_type_selector,
+            self.player_two_depth_selector,
+            self.player_two_name_input,
+        )
+
         button_y = min(
-            self.height - 125,
-            self.player_one_panel.bottom + 40,
+            self.height - 105,
+            self.player_one_panel.bottom + 36,
         )
 
         self.start_button.set_center(
@@ -179,17 +343,65 @@ class MatchSetupScreen(BaseScreen):
             - THEME.small_button_height,
         )
 
+    def _layout_panel_controls(
+        self,
+        panel_rect: pygame.Rect,
+        type_selector: Selector[PlayerType],
+        depth_selector: Selector[int],
+        name_input: TextInput,
+    ) -> None:
+        """
+        Position controls inside one player panel.
+        """
+        control_width = min(
+            340,
+            panel_rect.width - 2 * THEME.panel_padding,
+        )
+
+        type_selector.set_size(
+            control_width,
+            THEME.button_height,
+        )
+
+        type_selector.set_center(
+            panel_rect.centerx,
+            panel_rect.top + 145,
+        )
+
+        depth_selector.set_size(
+            min(240, control_width),
+            THEME.button_height,
+        )
+
+        depth_selector.set_center(
+            panel_rect.centerx,
+            panel_rect.top + 245,
+        )
+
+        name_input.set_size(
+            control_width,
+            THEME.button_height,
+        )
+
+        name_input.set_center(
+            panel_rect.centerx,
+            panel_rect.top + 245,
+        )
+
     def _draw_player_panel(
         self,
         surface: pygame.Surface,
         rect: pygame.Rect,
         *,
         title: str,
-        subtitle: str,
+        config: PlayerConfig,
         accent_color: tuple[int, int, int],
+        type_selector: Selector[PlayerType],
+        depth_selector: Selector[int],
+        name_input: TextInput,
     ) -> None:
         """
-        Draw one player configuration placeholder panel.
+        Draw one player configuration panel.
         """
         pygame.draw.rect(
             surface,
@@ -235,7 +447,7 @@ class MatchSetupScreen(BaseScreen):
         title_rect = title_surface.get_rect(
             midtop=(
                 rect.centerx,
-                rect.top + 32,
+                rect.top + 24,
             )
         )
 
@@ -244,59 +456,277 @@ class MatchSetupScreen(BaseScreen):
             title_rect,
         )
 
-        subtitle_font = FONTS.get(
-            THEME.font_body,
+        label_font = FONTS.get(
+            THEME.font_small,
+            bold=True,
         )
 
-        subtitle_surface = subtitle_font.render(
-            subtitle,
+        type_label_surface = label_font.render(
+            "PLAYER TYPE",
             True,
             THEME.text_secondary,
         )
 
-        subtitle_rect = subtitle_surface.get_rect(
-            midtop=(
+        type_label_rect = type_label_surface.get_rect(
+            center=(
                 rect.centerx,
-                title_rect.bottom + 18,
+                rect.top + 98,
             )
         )
 
         surface.blit(
-            subtitle_surface,
-            subtitle_rect,
+            type_label_surface,
+            type_label_rect,
         )
 
-        placeholder_font = FONTS.get(
-            THEME.font_subheading,
-            bold=True,
+        type_selector.draw(surface)
+
+        if config.player_type is PlayerType.LOOKAHEAD:
+            depth_label_surface = label_font.render(
+                "SEARCH DEPTH",
+                True,
+                THEME.text_secondary,
+            )
+
+            depth_label_rect = depth_label_surface.get_rect(
+                center=(
+                    rect.centerx,
+                    rect.top + 198,
+                )
+            )
+
+            surface.blit(
+                depth_label_surface,
+                depth_label_rect,
+            )
+
+            depth_selector.draw(surface)
+
+            self._draw_player_summary(
+                surface,
+                rect,
+                f"Depth-based Numba lookahead: {config.lookahead_depth}",
+            )
+
+        elif config.player_type is PlayerType.PPO:
+            self._draw_player_summary(
+                surface,
+                rect,
+                f"Model: {config.model_name}",
+            )
+
+        else:
+            name_label_surface = label_font.render(
+                "PLAYER NAME",
+                True,
+                THEME.text_secondary,
+            )
+
+            name_label_rect = name_label_surface.get_rect(
+                center=(
+                    rect.centerx,
+                    rect.top + 198,
+                )
+            )
+
+            surface.blit(
+                name_label_surface,
+                name_label_rect,
+            )
+
+            name_input.draw(surface)
+
+            self._draw_player_summary(
+                surface,
+                rect,
+                f"Playing as: {config.name}",
+            )
+
+    def _draw_player_summary(
+        self,
+        surface: pygame.Surface,
+        panel_rect: pygame.Rect,
+        text: str,
+    ) -> None:
+        """
+        Draw a short description near the bottom of a player panel.
+        """
+        font = FONTS.get(
+            THEME.font_small,
         )
 
-        placeholder_surface = placeholder_font.render(
-            "Not configured",
+        text_surface = font.render(
+            text,
             True,
             THEME.text_muted,
         )
 
-        placeholder_rect = placeholder_surface.get_rect(
+        text_rect = text_surface.get_rect(
             center=(
-                rect.centerx,
-                rect.centery + 35,
+                panel_rect.centerx,
+                panel_rect.bottom - 42,
             )
         )
 
         surface.blit(
-            placeholder_surface,
-            placeholder_rect,
+            text_surface,
+            text_rect,
+        )
+
+    def _refresh_player_controls(self) -> None:
+        """
+        Update conditional controls and generated player names.
+        """
+        player_one_is_human = (
+            self.player_one_config.player_type
+            is PlayerType.HUMAN
+        )
+
+        player_two_is_human = (
+            self.player_two_config.player_type
+            is PlayerType.HUMAN
+        )
+
+        self.player_one_depth_selector.set_visible(
+            self.player_one_config.player_type
+            is PlayerType.LOOKAHEAD
+        )
+
+        self.player_two_depth_selector.set_visible(
+            self.player_two_config.player_type
+            is PlayerType.LOOKAHEAD
+        )
+
+        self.player_one_name_input.set_visible(
+            player_one_is_human
+        )
+
+        self.player_two_name_input.set_visible(
+            player_two_is_human
+        )
+
+        if player_one_is_human:
+            self.player_one_config.name = (
+                self.player_one_human_name
+            )
+        else:
+            self.player_one_config.name = (
+                self._make_player_name(
+                    config=self.player_one_config,
+                )
+            )
+
+        if player_two_is_human:
+            self.player_two_config.name = (
+                self.player_two_human_name
+            )
+        else:
+            self.player_two_config.name = (
+                self._make_player_name(
+                    config=self.player_two_config,
+                )
+            )
+
+        self.player_one_config.validate()
+        self.player_two_config.validate()
+
+    @staticmethod
+    def _make_player_name(
+        *,
+        config: PlayerConfig,
+    ) -> str:
+        """
+        Generate a useful default AI player name.
+        """
+        if config.player_type is PlayerType.LOOKAHEAD:
+            return f"Lookahead {config.lookahead_depth}"
+
+        if config.player_type is PlayerType.PPO:
+            return "PPO 2004"
+
+        return "Human"
+
+    def _on_player_one_type_changed(
+        self,
+        player_type: PlayerType,
+    ) -> None:
+        self.player_one_config.player_type = player_type
+
+        if player_type is PlayerType.HUMAN:
+            self.player_one_name_input.set_text(
+                self.player_one_human_name,
+                notify=False,
+            )
+
+        self._refresh_player_controls()
+
+    def _on_player_two_type_changed(
+        self,
+        player_type: PlayerType,
+    ) -> None:
+        self.player_two_config.player_type = player_type
+
+        if player_type is PlayerType.HUMAN:
+            self.player_two_name_input.set_text(
+                self.player_two_human_name,
+                notify=False,
+            )
+
+        self._refresh_player_controls()
+
+    def _on_player_one_depth_changed(
+        self,
+        depth: int,
+    ) -> None:
+        self.player_one_config.lookahead_depth = int(depth)
+        self._refresh_player_controls()
+
+    def _on_player_two_depth_changed(
+        self,
+        depth: int,
+    ) -> None:
+        self.player_two_config.lookahead_depth = int(depth)
+        self._refresh_player_controls()
+
+    def _on_player_one_name_changed(
+        self,
+        name: str,
+    ) -> None:
+        cleaned = name.strip()
+
+        self.player_one_human_name = (
+            cleaned or "Player 1"
+        )
+
+        self.player_one_config.name = (
+            self.player_one_human_name
+        )
+
+    def _on_player_two_name_changed(
+        self,
+        name: str,
+    ) -> None:
+        cleaned = name.strip()
+
+        self.player_two_human_name = (
+            cleaned or "Player 2"
+        )
+
+        self.player_two_config.name = (
+            self.player_two_human_name
         )
 
     def _start_match(self) -> None:
         """
-        Placeholder callback.
+        Temporary scaffold callback.
 
-        The button remains disabled until player configuration exists.
+        The real implementation will construct Player instances and open the
+        game screen.
         """
-        print("Start Match requested")
+        self.player_one_config.validate()
+        self.player_two_config.validate()
 
-    def _go_back(self) -> None:
-        self.application.go_back()
+        print("Start Match requested")
+        print("Player 1:", self.player_one_config)
+        print("Player 2:", self.player_two_config)
 
