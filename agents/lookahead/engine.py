@@ -365,7 +365,7 @@ def _ensure_numba_cache():
                 s += 1
         return s
 
-    @njit(cache=True, fastmath=True)
+    @njit(cache=True, fastmath=True, nogil=True)
     def evaluate(
         pos_: UINT,
         mask_: UINT,
@@ -572,7 +572,7 @@ def _ensure_numba_cache():
         node_counter[0] += 1
         return node_counter[0] >= max_nodes
 
-    @njit(cache=True, fastmath=True)
+    @njit(cache=True,fastmath=True,nogil=True,)
     def negamax(
         pos_: UINT,
         mask_: UINT,
@@ -738,7 +738,7 @@ def _ensure_numba_cache():
         tt_store(pos_, mask_, depth, best_val, alpha0, beta, best_col, TT_pos_, TT_mask_, TT_depth_, TT_flag_, TT_val_, TT_move_)
         return best_val, best_col
 
-    @njit(cache=True, fastmath=True)
+    @njit(cache=True, fastmath=True, nogil=True,)
     def root_select_fixed(
         pos_: UINT,
         mask_: UINT,

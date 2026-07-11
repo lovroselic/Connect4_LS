@@ -3,23 +3,41 @@
 
 from __future__ import annotations
 
-import math
+from dataclasses import dataclass
 
 import pygame
 
-from game.match import Connect4Match, MatchStatus, TurnResult
+from game.match import (
+    Connect4Match,
+    MatchStatus,
+    TurnResult,
+)
+from players.base import MoveResult
 from rendering import BoardRenderer
 from ui.screens.base_screen import BaseScreen
 from ui.theme import FONTS, THEME
 from ui.widgets.button import Button
 
 
+@dataclass(frozen=True, slots=True)
+class AIWorkerResult:
+    """
+    Result calculated by an AI worker thread.
+    """
+
+    match_identity: int
+    generation: int
+    player_id: int
+    expected_move_count: int
+    move_result: MoveResult | None
+
+
 class GameScreen(BaseScreen):
     """
     Graphical screen for one Connect Four match.
 
-    The screen owns presentation and input only. Connect4Match remains
-    responsible for the board, players, turn progression, and result.
+    AI move selection runs on the application's worker thread. The worker
+    receives a board copy and never modifies the live match.
     """
 
     def __init__(self, application) -> None:
@@ -28,6 +46,12 @@ class GameScreen(BaseScreen):
         self.match: Connect4Match | None = None
 
         self.board_renderer = BoardRenderer()
+
+        self.ai_task = (
+            self.application
+            .task_manager
+            .create_task()
+        )
 
         self.back_button = Button(
             rect=(
@@ -56,13 +80,33 @@ class GameScreen(BaseScreen):
             self.restart_button,
         ]
 
-        self.left_panel_rect = pygame.Rect(0, 0, 0, 0)
-        self.right_panel_rect = pygame.Rect(0, 0, 0, 0)
-        self.board_area = pygame.Rect(0, 0, 0, 0)
+        self.left_panel_rect = pygame.Rect(
+            0,
+            0,
+            0,
+            0,
+        )
+
+        self.right_panel_rect = pygame.Rect(
+            0,
+            0,
+            0,
+            0,
+        )
+
+        self.board_area = pygame.Rect(
+            0,
+            0,
+            0,
+            0,
+        )
 
         self._ai_delay_elapsed_ms = 0.0
         self._last_move: TurnResult | None = None
         self._error_message = ""
+
+        self._generation = 0
+        self._ai_result_consumed = True
 
         self.refresh_layout()
 
@@ -79,7 +123,12 @@ class GameScreen(BaseScreen):
         """
         Assign the match displayed by this screen.
         """
-        if self.match is not None and self.match.is_running:
+        self._invalidate_ai_result()
+
+        if (
+            self.match is not None
+            and self.match.is_running
+        ):
             self.match.abort(
                 "Match replaced by a new match."
             )
@@ -98,6 +147,8 @@ class GameScreen(BaseScreen):
         self._ai_delay_elapsed_ms = 0.0
         self._error_message = ""
 
+        self._discard_stale_completed_task()
+
         if (
             self.match is not None
             and self.match.status
@@ -107,6 +158,7 @@ class GameScreen(BaseScreen):
 
     def on_exit(self) -> None:
         self.board_renderer.hovered_column = None
+        self._invalidate_ai_result()
 
     # ------------------------------------------------------------------
     # Input
@@ -147,11 +199,15 @@ class GameScreen(BaseScreen):
         if not self.match.is_running:
             return
 
+        if self.ai_task.is_running:
+            return
+
         if not self.match.current_player.is_human:
             return
 
-        column = self.board_renderer.column_at(
-            position
+        column = (
+            self.board_renderer
+            .column_at(position)
         )
 
         if column is None:
@@ -163,7 +219,8 @@ class GameScreen(BaseScreen):
 
         if not accepted:
             self._error_message = (
-                f"Column {column + 1} cannot be played."
+                f"Column {column + 1} "
+                "cannot be played."
             )
             return
 
@@ -172,7 +229,9 @@ class GameScreen(BaseScreen):
         turn = self.match.update()
 
         if turn is not None:
-            self._on_turn_completed(turn)
+            self._on_turn_completed(
+                turn
+            )
 
     # ------------------------------------------------------------------
     # Update
@@ -185,7 +244,11 @@ class GameScreen(BaseScreen):
         mouse_position = pygame.mouse.get_pos()
 
         for button in self.buttons:
-            button.update(mouse_position)
+            button.update(
+                mouse_position
+            )
+
+        self._consume_ai_task_if_ready()
 
         if self.match is None:
             self.board_renderer.hovered_column = None
@@ -194,6 +257,7 @@ class GameScreen(BaseScreen):
         interactive = (
             self.match.is_running
             and self.match.current_player.is_human
+            and not self.ai_task.is_running
         )
 
         self.board_renderer.update_hover(
@@ -209,33 +273,229 @@ class GameScreen(BaseScreen):
             self._ai_delay_elapsed_ms = 0.0
             return
 
+        if self.ai_task.is_running:
+            return
+
+        if (
+            self.ai_task.is_done
+            and not self._ai_result_consumed
+        ):
+            return
+
         self._ai_delay_elapsed_ms += (
             delta_time * 1000.0
         )
 
         delay_ms = max(
             0,
-            int(self.config.ai_move_delay_ms),
+            int(
+                self.config.ai_move_delay_ms
+            ),
         )
 
-        if self._ai_delay_elapsed_ms < delay_ms:
+        if (
+            self._ai_delay_elapsed_ms
+            < delay_ms
+        ):
             return
 
         self._ai_delay_elapsed_ms = 0.0
+        self._start_ai_task()
+
+    # ------------------------------------------------------------------
+    # AI worker
+    # ------------------------------------------------------------------
+
+    def _start_ai_task(self) -> None:
+        if self.match is None:
+            return
+
+        if not self.match.is_running:
+            return
+
+        if self.match.current_player.is_human:
+            return
+
+        if self.ai_task.is_running:
+            return
+
+        if self.ai_task.is_done:
+            self.ai_task.clear()
+
+        match = self.match
+        player = match.current_player
+        board_copy = match.board.copy()
+
+        match_identity = id(match)
+        generation = self._generation
+        player_id = player.player_id
+        expected_move_count = (
+            match.board.move_count
+        )
+
+        def calculate_move() -> AIWorkerResult:
+            move_result = player.choose_move(
+                board_copy
+            )
+
+            return AIWorkerResult(
+                match_identity=match_identity,
+                generation=generation,
+                player_id=player_id,
+                expected_move_count=(
+                    expected_move_count
+                ),
+                move_result=move_result,
+            )
+
+        self._ai_result_consumed = False
+
+        started = self.ai_task.start(
+            calculate_move
+        )
+
+        if not started:
+            self._ai_result_consumed = True
+            self._error_message = (
+                "Could not start AI calculation."
+            )
+
+    def _consume_ai_task_if_ready(
+        self,
+    ) -> None:
+        if not self.ai_task.is_done:
+            return
+
+        if self._ai_result_consumed:
+            return
+
+        self._ai_result_consumed = True
+
+        exception = self.ai_task.exception()
+
+        if exception is not None:
+            self._error_message = (
+                "AI move failed: "
+                f"{type(exception).__name__}: "
+                f"{exception}"
+            )
+
+            if (
+                self.match is not None
+                and self.match.is_running
+            ):
+                self.match.abort(
+                    self._error_message
+                )
+
+            self.ai_task.clear()
+            return
 
         try:
-            turn = self.match.update()
+            worker_result = (
+                self.ai_task.result()
+            )
+
         except Exception as error:
             self._error_message = (
-                f"AI move failed: {error}"
+                "AI move failed: "
+                f"{type(error).__name__}: "
+                f"{error}"
             )
-            self.match.abort(
-                self._error_message
+
+            if (
+                self.match is not None
+                and self.match.is_running
+            ):
+                self.match.abort(
+                    self._error_message
+                )
+
+            self.ai_task.clear()
+            return
+
+        self.ai_task.clear()
+
+        if worker_result is None:
+            return
+
+        if self.match is None:
+            return
+
+        if (
+            worker_result.match_identity
+            != id(self.match)
+        ):
+            return
+
+        if (
+            worker_result.generation
+            != self._generation
+        ):
+            return
+
+        if worker_result.move_result is None:
+            self._error_message = (
+                "AI returned no move."
             )
+
+            if self.match.is_running:
+                self.match.abort(
+                    self._error_message
+                )
+
+            return
+
+        try:
+            turn = (
+                self.match
+                .commit_move_result(
+                    player_id=(
+                        worker_result.player_id
+                    ),
+                    expected_move_count=(
+                        worker_result
+                        .expected_move_count
+                    ),
+                    move_result=(
+                        worker_result.move_result
+                    ),
+                )
+            )
+
+        except Exception as error:
+            self._error_message = (
+                "AI move failed: "
+                f"{type(error).__name__}: "
+                f"{error}"
+            )
+
+            if self.match.is_running:
+                self.match.abort(
+                    self._error_message
+                )
+
             return
 
         if turn is not None:
-            self._on_turn_completed(turn)
+            self._on_turn_completed(
+                turn
+            )
+
+    def _discard_stale_completed_task(
+        self,
+    ) -> None:
+        if self.ai_task.is_done:
+            self._ai_result_consumed = True
+            self.ai_task.clear()
+
+    def _invalidate_ai_result(self) -> None:
+        self._generation += 1
+        self._ai_delay_elapsed_ms = 0.0
+
+        if self.ai_task.is_done:
+            self._ai_result_consumed = True
+            self.ai_task.clear()
 
     def _on_turn_completed(
         self,
@@ -265,7 +525,9 @@ class GameScreen(BaseScreen):
         )
 
         if self.match is None:
-            self._draw_missing_match(surface)
+            self._draw_missing_match(
+                surface
+            )
 
             for button in self.buttons:
                 button.draw(surface)
@@ -289,6 +551,7 @@ class GameScreen(BaseScreen):
         if (
             self.match.is_running
             and self.match.current_player.is_human
+            and not self.ai_task.is_running
         ):
             preview_player = (
                 self.match.board.current_player
@@ -416,8 +679,17 @@ class GameScreen(BaseScreen):
         )
 
         if is_current:
+            turn_text = (
+                "THINKING"
+                if (
+                    not player.is_human
+                    and self.ai_task.is_running
+                )
+                else "CURRENT TURN"
+            )
+
             turn_surface = type_font.render(
-                "CURRENT TURN",
+                turn_text,
                 True,
                 THEME.accent_hover,
             )
@@ -445,17 +717,26 @@ class GameScreen(BaseScreen):
             bold=True,
         )
 
-        if self.match.status is MatchStatus.FINISHED:
+        if (
+            self.match.status
+            is MatchStatus.FINISHED
+        ):
             assert self.match.result is not None
             text = self.match.result.reason
             color = THEME.success
 
-        elif self.match.status is MatchStatus.ABORTED:
+        elif (
+            self.match.status
+            is MatchStatus.ABORTED
+        ):
             assert self.match.result is not None
             text = self.match.result.reason
             color = THEME.danger
 
-        elif self.match.current_player.is_human:
+        elif (
+            self.match.current_player
+            .is_human
+        ):
             text = (
                 f"{self.match.current_player.name}, "
                 "choose a column."
@@ -506,7 +787,8 @@ class GameScreen(BaseScreen):
 
         if analysis.search_depth is not None:
             lines.append(
-                f"Depth: {analysis.search_depth}"
+                f"Depth: "
+                f"{analysis.search_depth}"
             )
 
         if analysis.elapsed_seconds > 0.0:
@@ -521,7 +803,10 @@ class GameScreen(BaseScreen):
                 f"{analysis.value_estimate:.3f}"
             )
 
-        if analysis.policy_probabilities is not None:
+        if (
+            analysis.policy_probabilities
+            is not None
+        ):
             probability = (
                 analysis.policy_probabilities[
                     self._last_move.move.column
@@ -701,6 +986,8 @@ class GameScreen(BaseScreen):
         if self.match is None:
             return
 
+        self._invalidate_ai_result()
+
         starting_player = (
             self.match.board.starting_player
         )
@@ -714,6 +1001,8 @@ class GameScreen(BaseScreen):
         self._ai_delay_elapsed_ms = 0.0
 
     def _return_to_main_menu(self) -> None:
+        self._invalidate_ai_result()
+
         if (
             self.match is not None
             and self.match.is_running

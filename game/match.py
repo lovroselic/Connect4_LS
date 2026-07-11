@@ -51,22 +51,8 @@ class Connect4Match:
     """
     Controls one Connect Four match.
 
-    Responsibilities:
-
-        - owns the authoritative Connect4Board;
-        - owns Player 1 and Player 2;
-        - requests moves from the current player;
-        - commits valid moves;
-        - stores move analysis;
-        - detects wins and draws;
-        - manages match lifecycle.
-
-    The controller has no Pygame dependency and can therefore be used by:
-
-        - the graphical game screen;
-        - AI-vs-AI matches;
-        - headless tests;
-        - benchmarks.
+    The board is authoritative and must only be changed through this
+    controller.
     """
 
     def __init__(
@@ -104,7 +90,9 @@ class Connect4Match:
         self.result: MatchResult | None = None
 
         self.latest_analysis: MoveAnalysis | None = None
-        self.analysis_history: list[MoveAnalysis | None] = []
+        self.analysis_history: list[
+            MoveAnalysis | None
+        ] = []
 
         self._started_at: float | None = None
         self._finished_at: float | None = None
@@ -115,19 +103,28 @@ class Connect4Match:
 
     @property
     def player_one(self) -> Player:
-        return self.players[Connect4Board.PLAYER_ONE]
+        return self.players[
+            Connect4Board.PLAYER_ONE
+        ]
 
     @property
     def player_two(self) -> Player:
-        return self.players[Connect4Board.PLAYER_TWO]
+        return self.players[
+            Connect4Board.PLAYER_TWO
+        ]
 
     @property
     def current_player(self) -> Player:
-        return self.players[self.board.current_player]
+        return self.players[
+            self.board.current_player
+        ]
 
     @property
     def is_running(self) -> bool:
-        return self.status is MatchStatus.IN_PROGRESS
+        return (
+            self.status
+            is MatchStatus.IN_PROGRESS
+        )
 
     @property
     def is_finished(self) -> bool:
@@ -163,12 +160,11 @@ class Connect4Match:
     ) -> None:
         """
         Start a fresh match.
-
-        Calling start() after a previous match resets the board, history,
-        analysis, and result.
         """
         if starting_player is None:
-            starting_player = self.board.starting_player
+            starting_player = (
+                self.board.starting_player
+            )
 
         self.board.reset(
             starting_player=starting_player,
@@ -230,13 +226,6 @@ class Connect4Match:
     ) -> bool:
         """
         Submit a column to the current player.
-
-        This is intended for HumanPlayer, but avoids importing the concrete
-        class. Any player implementing submit_move(column, board) can accept
-        input.
-
-        Returns False when the match is not active or the current player does
-        not accept submitted input.
         """
         if not self.is_running:
             return False
@@ -263,13 +252,10 @@ class Connect4Match:
 
     def update(self) -> TurnResult | None:
         """
-        Ask the current player for a move and commit it when available.
+        Ask the current player for a move and commit it.
 
-        Human players normally return None until input has been submitted.
-        AI players normally return a MoveResult immediately.
-
-        The graphical application can call this once per frame. A headless
-        runner can call it repeatedly until the match finishes.
+        This synchronous method remains useful for human turns, tests,
+        headless matches, and benchmarks.
         """
         if not self.is_running:
             return None
@@ -290,9 +276,53 @@ class Connect4Match:
 
     def play_one_turn(self) -> TurnResult | None:
         """
-        Alias for update(), useful in tests and headless matches.
+        Alias for update().
         """
         return self.update()
+
+    def commit_move_result(
+        self,
+        *,
+        player_id: int,
+        expected_move_count: int,
+        move_result: MoveResult,
+    ) -> TurnResult | None:
+        """
+        Commit a move calculated outside the main match loop.
+
+        The expected player and move count guard against stale background
+        results after a restart, screen change, or another committed move.
+
+        Returns None when the result is stale.
+        """
+        if not self.is_running:
+            return None
+
+        player_id = int(player_id)
+        expected_move_count = int(
+            expected_move_count
+        )
+
+        if (
+            self.board.move_count
+            != expected_move_count
+        ):
+            return None
+
+        if (
+            self.board.current_player
+            != player_id
+        ):
+            return None
+
+        player = self.player_for_id(
+            player_id
+        )
+
+        return self._commit_move(
+            player=player,
+            move_result=move_result,
+        )
 
     def _commit_move(
         self,
@@ -303,23 +333,32 @@ class Connect4Match:
         """
         Validate and commit one returned move.
         """
-        if player.player_id != self.board.current_player:
+        if (
+            player.player_id
+            != self.board.current_player
+        ):
             raise RuntimeError(
                 f"Player {player.player_id} returned a move when "
                 f"Player {self.board.current_player} was expected."
             )
 
-        column = int(move_result.column)
+        column = int(
+            move_result.column
+        )
 
         if not self.board.can_play(column):
             raise RuntimeError(
                 f"Player {player.player_id} returned illegal column "
-                f"{column}. Legal moves: {self.board.legal_moves()}"
+                f"{column}. Legal moves: "
+                f"{self.board.legal_moves()}"
             )
 
         move = self.board.play(column)
 
-        self.latest_analysis = move_result.analysis
+        self.latest_analysis = (
+            move_result.analysis
+        )
+
         self.analysis_history.append(
             move_result.analysis
         )
@@ -327,7 +366,9 @@ class Connect4Match:
         match_result: MatchResult | None = None
 
         if self.board.is_terminal:
-            match_result = self._finish_match()
+            match_result = (
+                self._finish_match()
+            )
 
         return TurnResult(
             move=move,
@@ -351,7 +392,10 @@ class Connect4Match:
             is_draw = False
         else:
             winner = None
-            reason = "The board is full. The match is a draw."
+            reason = (
+                "The board is full. "
+                "The match is a draw."
+            )
             is_draw = True
 
         self.result = MatchResult(
@@ -379,14 +423,18 @@ class Connect4Match:
         Return a player by board identifier.
         """
         try:
-            return self.players[int(player_id)]
+            return self.players[
+                int(player_id)
+            ]
+
         except (
             KeyError,
             TypeError,
             ValueError,
         ) as error:
             raise ValueError(
-                f"player_id must be 1 or 2, got {player_id!r}"
+                "player_id must be 1 or 2, "
+                f"got {player_id!r}"
             ) from error
 
     def analysis_for_move(
@@ -396,5 +444,7 @@ class Connect4Match:
         """
         Return analysis for a zero-based move index.
         """
-        return self.analysis_history[move_index]
+        return self.analysis_history[
+            move_index
+        ]
 
