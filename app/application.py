@@ -16,6 +16,7 @@ from ui.screens.match_setup import MatchSetupScreen
 from ui.screens.settings_screen import SettingsScreen
 from ui.screens.test_menu import TestMenuScreen
 from ui.theme import FONTS
+from infrastructure import TaskManager
 
 
 class Application:
@@ -34,6 +35,10 @@ class Application:
         self.state = AppState()
 
         pygame.init()
+        
+        self.task_manager = TaskManager(
+            maximum_workers=1,
+        )
 
         self.screen = self._create_display(
             self.config.window_width,
@@ -309,6 +314,7 @@ class Application:
     # Shutdown
     # ------------------------------------------------------------------
 
+   
     def shutdown(self) -> None:
         """
         Release application resources.
@@ -317,7 +323,16 @@ class Application:
             self.active_screen.on_exit()
         except Exception:
             pass
-
+    
+        try:
+            self.task_manager.shutdown(
+                wait=True,
+            )
+        except Exception:
+            pass
+    
         FONTS.clear()
         pygame.quit()
+
+
 

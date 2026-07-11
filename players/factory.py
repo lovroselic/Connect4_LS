@@ -9,6 +9,8 @@ import torch
 
 from agents.lookahead import Connect4Lookahead
 from agents.ppo import CNet192
+from app.lookahead_config import LOOKAHEAD_CONFIG
+from game import Connect4Board
 from players.base import Player, PlayerConfig, PlayerType
 from players.human import HumanPlayer
 from players.lookahead import LookaheadPlayer
@@ -19,8 +21,20 @@ class PlayerFactory:
     """
     Construct concrete Player instances from PlayerConfig objects.
 
-    Shared AI engines and models are reused between players where appropriate.
+    Shared AI engines and models are reused between players.
+
+    The Lookahead engine is warmed up once, using a small non-opening
+    position, so Numba compilation happens before the first real AI move.
     """
+
+    LOOKAHEAD_WARMUP_MOVES = (
+        3,
+        2,
+        3,
+        2,
+        4,
+        1,
+    )
 
     def __init__(
         self,
@@ -32,15 +46,26 @@ class PlayerFactory:
         ppo_mirror_tta: bool = True,
     ) -> None:
         self._lookahead_engine = lookahead_engine
+        self._lookahead_warmed_up = False
 
         self._ppo_model = ppo_model
         self._ppo_model_path = ppo_model_path
+
         self._ppo_device = torch.device(
-            ppo_device if ppo_device is not None else "cpu"
+            ppo_device
+            if ppo_device is not None
+            else "cpu"
         )
+
         self._ppo_mirror_tta = bool(
             ppo_mirror_tta
         )
+
+        self._ppo_warmed_up = False
+
+    # ------------------------------------------------------------------
+    # Player construction
+    # ------------------------------------------------------------------
 
     def create(
         self,
@@ -49,6 +74,9 @@ class PlayerFactory:
     ) -> Player:
         """
         Create one player from its configuration.
+
+        The configuration is copied so the player owns an independent
+        configuration that cannot be modified by Match Setup afterward.
         """
         config_copy = config.copy()
         config_copy.validate()
@@ -60,6 +88,8 @@ class PlayerFactory:
             )
 
         if config_copy.player_type is PlayerType.LOOKAHEAD:
+            self.warm_up_lookahead()
+
             return LookaheadPlayer(
                 player_id=player_id,
                 config=config_copy,
@@ -79,10 +109,15 @@ class PlayerFactory:
             if self._ppo_model is None:
                 self._ppo_model = player.model
 
+            if not self._ppo_warmed_up:
+                player.warm_up()
+                self._ppo_warmed_up = True
+
             return player
 
         raise ValueError(
-            f"Unsupported player type: {config_copy.player_type!r}"
+            f"Unsupported player type: "
+            f"{config_copy.player_type!r}"
         )
 
     def create_pair(
@@ -105,9 +140,57 @@ class PlayerFactory:
 
         return player_one, player_two
 
-    def _get_lookahead_engine(self) -> Connect4Lookahead:
+    # ------------------------------------------------------------------
+    # Lookahead engine
+    # ------------------------------------------------------------------
+
+    def _get_lookahead_engine(
+        self,
+    ) -> Connect4Lookahead:
+        """
+        Lazily construct and reuse the Lookahead engine.
+        """
         if self._lookahead_engine is None:
-            self._lookahead_engine = Connect4Lookahead()
+            self._lookahead_engine = (
+                Connect4Lookahead()
+            )
 
         return self._lookahead_engine
+
+    def warm_up_lookahead(self) -> None:
+        """
+        Compile the Numba Lookahead search once.
+
+        An empty board cannot be used because the opening book immediately
+        returns column 3 and never enters the compiled search. The warm-up
+        therefore uses a small legal midgame position.
+        """
+        if self._lookahead_warmed_up:
+            return
+
+        engine = self._get_lookahead_engine()
+
+        warmup_board = Connect4Board.from_moves(
+            self.LOOKAHEAD_WARMUP_MOVES
+        )
+
+        engine.n_step_lookahead(
+            warmup_board.to_numpy(),
+            player=warmup_board.current_player,
+            depth=LOOKAHEAD_CONFIG.warmup_depth,
+        )
+
+        self._lookahead_warmed_up = True
+
+    # ------------------------------------------------------------------
+    # Warm-up state
+    # ------------------------------------------------------------------
+
+    @property
+    def lookahead_is_warmed_up(self) -> bool:
+        return self._lookahead_warmed_up
+
+    @property
+    def ppo_is_warmed_up(self) -> bool:
+        return self._ppo_warmed_up
 
