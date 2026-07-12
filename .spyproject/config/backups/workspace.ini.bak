@@ -4,7 +4,7 @@ save_data_on_exit = True
 save_history = True
 save_non_project_files = False
 project_type = 'empty-project-type'
-recent_files = ['main.py', 'app\\version.py', 'players\\base.py']
+recent_files = ['main.py', 'app\\version.py', 'config\\lookahead.json', 'tests\\test_lookahead.py', 'tests\\test_board.py', 'ui\\screens\\test_menu.py', 'ui\\screens\\game_screen.py', 'game\\match.py', 'agents\\lookahead\\engine.py', 'rendering\\board_renderer.py', 'rendering\\__init__.py', 'ui\\widgets\\button.py']
 
 [main]
 version = 0.2.0

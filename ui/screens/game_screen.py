@@ -38,7 +38,13 @@ class GameScreen(BaseScreen):
 
     AI move selection runs on the application's worker thread. The worker
     receives a board copy and never modifies the live match.
+
+    Committed moves are displayed using a short falling-disc animation.
+    A completed match displays a compact result panel beside the board.
     """
+
+    OVERLAY_WIDTH = 280
+    OVERLAY_HEIGHT = 250
 
     def __init__(self, application) -> None:
         super().__init__(application)
@@ -75,9 +81,38 @@ class GameScreen(BaseScreen):
             callback=self._restart_match,
         )
 
-        self.buttons = [
+        self.play_again_button = Button(
+            rect=(
+                0,
+                0,
+                210,
+                THEME.small_button_height,
+            ),
+            text="Play Again",
+            callback=self._restart_match,
+            visible=False,
+        )
+
+        self.overlay_main_menu_button = Button(
+            rect=(
+                0,
+                0,
+                210,
+                THEME.small_button_height,
+            ),
+            text="Main Menu",
+            callback=self._return_to_main_menu,
+            visible=False,
+        )
+
+        self.game_buttons = [
             self.back_button,
             self.restart_button,
+        ]
+
+        self.overlay_buttons = [
+            self.play_again_button,
+            self.overlay_main_menu_button,
         ]
 
         self.left_panel_rect = pygame.Rect(
@@ -99,6 +134,13 @@ class GameScreen(BaseScreen):
             0,
             0,
             0,
+        )
+
+        self.overlay_rect = pygame.Rect(
+            0,
+            0,
+            self.OVERLAY_WIDTH,
+            self.OVERLAY_HEIGHT,
         )
 
         self._ai_delay_elapsed_ms = 0.0
@@ -124,6 +166,8 @@ class GameScreen(BaseScreen):
         Assign the match displayed by this screen.
         """
         self._invalidate_ai_result()
+        self.board_renderer.cancel_animation()
+        self._set_overlay_visible(False)
 
         if (
             self.match is not None
@@ -156,9 +200,13 @@ class GameScreen(BaseScreen):
         ):
             self.match.start()
 
+        self._refresh_overlay_state()
+
     def on_exit(self) -> None:
         self.board_renderer.hovered_column = None
+        self.board_renderer.cancel_animation()
         self._invalidate_ai_result()
+        self._set_overlay_visible(False)
 
     # ------------------------------------------------------------------
     # Input
@@ -168,7 +216,27 @@ class GameScreen(BaseScreen):
         self,
         event: pygame.event.Event,
     ) -> None:
-        for button in self.buttons:
+        if self._game_over_overlay_visible():
+            for button in self.overlay_buttons:
+                if button.handle_event(event):
+                    return
+
+            if event.type == pygame.KEYDOWN:
+                if event.key in (
+                    pygame.K_RETURN,
+                    pygame.K_SPACE,
+                    pygame.K_r,
+                ):
+                    self._restart_match()
+                    return
+
+                if event.key == pygame.K_ESCAPE:
+                    self._return_to_main_menu()
+                    return
+
+            return
+
+        for button in self.game_buttons:
             if button.handle_event(event):
                 return
 
@@ -197,6 +265,9 @@ class GameScreen(BaseScreen):
             return
 
         if not self.match.is_running:
+            return
+
+        if self.board_renderer.is_animating:
             return
 
         if self.ai_task.is_running:
@@ -243,12 +314,26 @@ class GameScreen(BaseScreen):
     ) -> None:
         mouse_position = pygame.mouse.get_pos()
 
-        for button in self.buttons:
+        self.board_renderer.update(
+        delta_time
+        * self.config.animation_speed
+    )
+
+        self._consume_ai_task_if_ready()
+        self._refresh_overlay_state()
+
+        if self._game_over_overlay_visible():
+            for button in self.overlay_buttons:
+                button.update(
+                    mouse_position
+                )
+
+            return
+
+        for button in self.game_buttons:
             button.update(
                 mouse_position
             )
-
-        self._consume_ai_task_if_ready()
 
         if self.match is None:
             self.board_renderer.hovered_column = None
@@ -258,6 +343,7 @@ class GameScreen(BaseScreen):
             self.match.is_running
             and self.match.current_player.is_human
             and not self.ai_task.is_running
+            and not self.board_renderer.is_animating
         )
 
         self.board_renderer.update_hover(
@@ -267,6 +353,10 @@ class GameScreen(BaseScreen):
         )
 
         if not self.match.is_running:
+            return
+
+        if self.board_renderer.is_animating:
+            self._ai_delay_elapsed_ms = 0.0
             return
 
         if self.match.current_player.is_human:
@@ -311,6 +401,9 @@ class GameScreen(BaseScreen):
             return
 
         if not self.match.is_running:
+            return
+
+        if self.board_renderer.is_animating:
             return
 
         if self.match.current_player.is_human:
@@ -505,6 +598,50 @@ class GameScreen(BaseScreen):
         self._error_message = ""
         self._ai_delay_elapsed_ms = 0.0
 
+        self.board_renderer.start_drop(
+            row=turn.move.row,
+            column=turn.move.column,
+            player=turn.move.player,
+        )
+
+    # ------------------------------------------------------------------
+    # Overlay state
+    # ------------------------------------------------------------------
+
+    def _game_over_overlay_visible(
+        self,
+    ) -> bool:
+        return (
+            self.match is not None
+            and self.match.status
+            is MatchStatus.FINISHED
+            and not self.board_renderer.is_animating
+        )
+
+    def _refresh_overlay_state(
+        self,
+    ) -> None:
+        self._set_overlay_visible(
+            self._game_over_overlay_visible()
+        )
+
+    def _set_overlay_visible(
+        self,
+        visible: bool,
+    ) -> None:
+        for button in self.overlay_buttons:
+            button.set_visible(
+                visible
+            )
+
+        for button in self.game_buttons:
+            button.set_enabled(
+                not visible
+            )
+
+        if visible:
+            self.board_renderer.hovered_column = None
+
     # ------------------------------------------------------------------
     # Drawing
     # ------------------------------------------------------------------
@@ -529,7 +666,7 @@ class GameScreen(BaseScreen):
                 surface
             )
 
-            for button in self.buttons:
+            for button in self.game_buttons:
                 button.draw(surface)
 
             return
@@ -552,6 +689,7 @@ class GameScreen(BaseScreen):
             self.match.is_running
             and self.match.current_player.is_human
             and not self.ai_task.is_running
+            and not self.board_renderer.is_animating
         ):
             preview_player = (
                 self.match.board.current_player
@@ -567,11 +705,16 @@ class GameScreen(BaseScreen):
         self._draw_status(surface)
         self._draw_analysis(surface)
 
-        for button in self.buttons:
+        for button in self.game_buttons:
             button.draw(surface)
 
         if self._error_message:
             self._draw_error(surface)
+
+        if self._game_over_overlay_visible():
+            self._draw_game_over_overlay(
+                surface
+            )
 
     def _draw_player_panel(
         self,
@@ -721,9 +864,13 @@ class GameScreen(BaseScreen):
             self.match.status
             is MatchStatus.FINISHED
         ):
-            assert self.match.result is not None
-            text = self.match.result.reason
-            color = THEME.success
+            if self.board_renderer.is_animating:
+                text = "Dropping final piece..."
+                color = THEME.text_secondary
+            else:
+                assert self.match.result is not None
+                text = self.match.result.reason
+                color = THEME.success
 
         elif (
             self.match.status
@@ -733,10 +880,11 @@ class GameScreen(BaseScreen):
             text = self.match.result.reason
             color = THEME.danger
 
-        elif (
-            self.match.current_player
-            .is_human
-        ):
+        elif self.board_renderer.is_animating:
+            text = "Dropping piece..."
+            color = THEME.text_secondary
+
+        elif self.match.current_player.is_human:
             text = (
                 f"{self.match.current_player.name}, "
                 "choose a column."
@@ -787,8 +935,7 @@ class GameScreen(BaseScreen):
 
         if analysis.search_depth is not None:
             lines.append(
-                f"Depth: "
-                f"{analysis.search_depth}"
+                f"Depth: {analysis.search_depth}"
             )
 
         if analysis.elapsed_seconds > 0.0:
@@ -844,6 +991,117 @@ class GameScreen(BaseScreen):
             text_surface,
             text_rect,
         )
+
+    def _draw_game_over_overlay(
+        self,
+        surface: pygame.Surface,
+    ) -> None:
+        assert self.match is not None
+        assert self.match.result is not None
+
+        shadow_rect = self.overlay_rect.move(
+            8,
+            10,
+        )
+
+        pygame.draw.rect(
+            surface,
+            THEME.shadow,
+            shadow_rect,
+            border_radius=THEME.panel_radius,
+        )
+
+        pygame.draw.rect(
+            surface,
+            THEME.panel_background,
+            self.overlay_rect,
+            border_radius=THEME.panel_radius,
+        )
+
+        pygame.draw.rect(
+            surface,
+            THEME.accent_hover,
+            self.overlay_rect,
+            width=3,
+            border_radius=THEME.panel_radius,
+        )
+
+        title_font = FONTS.get(
+            THEME.font_subheading,
+            bold=True,
+        )
+
+        result_font = FONTS.get(
+            THEME.font_body,
+            bold=True,
+        )
+
+        detail_font = FONTS.get(
+            THEME.font_small,
+        )
+
+        title_surface = title_font.render(
+            "Game Over",
+            True,
+            THEME.text_primary,
+        )
+
+        title_rect = title_surface.get_rect(
+            center=(
+                self.overlay_rect.centerx,
+                self.overlay_rect.top + 32,
+            )
+        )
+
+        surface.blit(
+            title_surface,
+            title_rect,
+        )
+
+        result_surface = result_font.render(
+            self.match.result.reason,
+            True,
+            THEME.success,
+        )
+
+        result_rect = result_surface.get_rect(
+            center=(
+                self.overlay_rect.centerx,
+                self.overlay_rect.top + 68,
+            )
+        )
+
+        surface.blit(
+            result_surface,
+            result_rect,
+        )
+
+        details = (
+            f"Moves: {self.match.result.move_count}"
+            f"  ·  "
+            f"{self.match.result.elapsed_seconds:.2f} s"
+        )
+
+        detail_surface = detail_font.render(
+            details,
+            True,
+            THEME.text_secondary,
+        )
+
+        detail_rect = detail_surface.get_rect(
+            center=(
+                self.overlay_rect.centerx,
+                self.overlay_rect.top + 100,
+            )
+        )
+
+        surface.blit(
+            detail_surface,
+            detail_rect,
+        )
+
+        for button in self.overlay_buttons:
+            button.draw(surface)
 
     def _draw_error(
         self,
@@ -978,6 +1236,89 @@ class GameScreen(BaseScreen):
             - THEME.small_button_height,
         )
 
+        overlay_width = min(
+            self.OVERLAY_WIDTH,
+            self.width
+            - 2 * THEME.screen_margin,
+        )
+
+        overlay_height = min(
+            self.OVERLAY_HEIGHT,
+            self.height
+            - 2 * THEME.screen_margin,
+        )
+
+        self.overlay_rect = pygame.Rect(
+            0,
+            0,
+            overlay_width,
+            overlay_height,
+        )
+
+        preferred_x = (
+            self.board_renderer
+            .layout
+            .board_rect
+            .right
+            + THEME.section_spacing
+        )
+
+        maximum_x = (
+            self.width
+            - THEME.screen_margin
+            - overlay_width
+        )
+
+        overlay_x = min(
+            preferred_x,
+            maximum_x,
+        )
+
+        overlay_x = max(
+            THEME.screen_margin,
+            overlay_x,
+        )
+
+        overlay_y = (
+            self.board_renderer
+            .layout
+            .board_rect
+            .centery
+            - overlay_height // 2
+        )
+
+        overlay_y = max(
+            90,
+            min(
+                overlay_y,
+                self.height
+                - THEME.screen_margin
+                - overlay_height
+                - THEME.small_button_height,
+            ),
+        )
+
+        self.overlay_rect.topleft = (
+            overlay_x,
+            overlay_y,
+        )
+
+        button_y = (
+            self.overlay_rect.top + 138
+        )
+
+        self.play_again_button.set_center(
+            self.overlay_rect.centerx,
+            button_y,
+        )
+
+        self.overlay_main_menu_button.set_center(
+            self.overlay_rect.centerx,
+            button_y
+            + THEME.small_button_height
+            + 12,
+        )
+
     # ------------------------------------------------------------------
     # Commands
     # ------------------------------------------------------------------
@@ -985,23 +1326,21 @@ class GameScreen(BaseScreen):
     def _restart_match(self) -> None:
         if self.match is None:
             return
-
+    
         self._invalidate_ai_result()
-
-        starting_player = (
-            self.match.board.starting_player
-        )
-
-        self.match.start(
-            starting_player=starting_player,
-        )
-
+        self.board_renderer.cancel_animation()
+        self._set_overlay_visible(False)
+    
+        self.match.restart()
+    
         self._last_move = None
         self._error_message = ""
         self._ai_delay_elapsed_ms = 0.0
 
     def _return_to_main_menu(self) -> None:
         self._invalidate_ai_result()
+        self.board_renderer.cancel_animation()
+        self._set_overlay_visible(False)
 
         if (
             self.match is not None

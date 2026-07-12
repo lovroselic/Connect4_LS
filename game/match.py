@@ -1,7 +1,8 @@
-
 # game/match.py
 
 from __future__ import annotations
+
+import random
 
 from dataclasses import dataclass
 from enum import Enum, auto
@@ -20,6 +21,26 @@ class MatchStatus(Enum):
     IN_PROGRESS = auto()
     FINISHED = auto()
     ABORTED = auto()
+
+
+class StartingPlayerMode(Enum):
+    """
+    Determines who starts a match and its subsequent replays.
+    """
+
+    PLAYER_ONE = "player_one"
+    PLAYER_TWO = "player_two"
+    RANDOM = "random"
+    ALTERNATE = "alternate"
+
+    @property
+    def display_name(self) -> str:
+        return {
+            StartingPlayerMode.PLAYER_ONE: "Player 1 starts",
+            StartingPlayerMode.PLAYER_TWO: "Player 2 starts",
+            StartingPlayerMode.RANDOM: "Random starter",
+            StartingPlayerMode.ALTERNATE: "Alternate on replay",
+        }[self]
 
 
 @dataclass(frozen=True, slots=True)
@@ -61,13 +82,20 @@ class Connect4Match:
         player_two: Player,
         *,
         starting_player: int = Connect4Board.PLAYER_ONE,
+        starting_mode: StartingPlayerMode | None = None,
     ) -> None:
-        if player_one.player_id != Connect4Board.PLAYER_ONE:
+        if (
+            player_one.player_id
+            != Connect4Board.PLAYER_ONE
+        ):
             raise ValueError(
                 "player_one must have player_id 1."
             )
 
-        if player_two.player_id != Connect4Board.PLAYER_TWO:
+        if (
+            player_two.player_id
+            != Connect4Board.PLAYER_TWO
+        ):
             raise ValueError(
                 "player_two must have player_id 2."
             )
@@ -77,13 +105,41 @@ class Connect4Match:
                 "Player 1 and Player 2 must be separate objects."
             )
 
+        starting_player = self._validate_player_id(
+            starting_player
+        )
+
+        if starting_mode is None:
+            starting_mode = (
+                StartingPlayerMode.PLAYER_ONE
+                if starting_player
+                == Connect4Board.PLAYER_ONE
+                else StartingPlayerMode.PLAYER_TWO
+            )
+
+        if not isinstance(
+            starting_mode,
+            StartingPlayerMode,
+        ):
+            starting_mode = StartingPlayerMode(
+                starting_mode
+            )
+
         self.players: dict[int, Player] = {
             Connect4Board.PLAYER_ONE: player_one,
             Connect4Board.PLAYER_TWO: player_two,
         }
 
+        self.starting_mode = starting_mode
+
+        initial_starting_player = (
+            self._resolve_initial_starting_player(
+                fallback=starting_player
+            )
+        )
+
         self.board = Connect4Board(
-            starting_player=starting_player,
+            starting_player=initial_starting_player,
         )
 
         self.status = MatchStatus.NOT_STARTED
@@ -160,11 +216,20 @@ class Connect4Match:
     ) -> None:
         """
         Start a fresh match.
+
+        When starting_player is omitted, the board's currently configured
+        starter is reused. Use restart() to apply the configured replay mode.
         """
         if starting_player is None:
             starting_player = (
                 self.board.starting_player
             )
+
+        starting_player = (
+            self._validate_player_id(
+                starting_player
+            )
+        )
 
         self.board.reset(
             starting_player=starting_player,
@@ -181,6 +246,18 @@ class Connect4Match:
         self.player_two.begin_match()
 
         self.status = MatchStatus.IN_PROGRESS
+
+    def restart(self) -> None:
+        """
+        Restart the match according to its configured starting-player mode.
+        """
+        starting_player = (
+            self._resolve_replay_starting_player()
+        )
+
+        self.start(
+            starting_player=starting_player,
+        )
 
     def abort(
         self,
@@ -215,6 +292,95 @@ class Connect4Match:
         self.player_two.end_match()
 
         return self.result
+
+    # ------------------------------------------------------------------
+    # Starting-player policy
+    # ------------------------------------------------------------------
+
+    def _resolve_initial_starting_player(
+        self,
+        *,
+        fallback: int,
+    ) -> int:
+        if (
+            self.starting_mode
+            is StartingPlayerMode.PLAYER_ONE
+        ):
+            return Connect4Board.PLAYER_ONE
+
+        if (
+            self.starting_mode
+            is StartingPlayerMode.PLAYER_TWO
+        ):
+            return Connect4Board.PLAYER_TWO
+
+        if (
+            self.starting_mode
+            is StartingPlayerMode.RANDOM
+        ):
+            return random.choice(
+                (
+                    Connect4Board.PLAYER_ONE,
+                    Connect4Board.PLAYER_TWO,
+                )
+            )
+
+        # Alternate starts with the supplied fallback. Match Setup supplies
+        # Player 1, so the sequence becomes 1, 2, 1, 2...
+        return self._validate_player_id(
+            fallback
+        )
+
+    def _resolve_replay_starting_player(
+        self,
+    ) -> int:
+        if (
+            self.starting_mode
+            is StartingPlayerMode.PLAYER_ONE
+        ):
+            return Connect4Board.PLAYER_ONE
+
+        if (
+            self.starting_mode
+            is StartingPlayerMode.PLAYER_TWO
+        ):
+            return Connect4Board.PLAYER_TWO
+
+        if (
+            self.starting_mode
+            is StartingPlayerMode.RANDOM
+        ):
+            return random.choice(
+                (
+                    Connect4Board.PLAYER_ONE,
+                    Connect4Board.PLAYER_TWO,
+                )
+            )
+
+        if (
+            self.board.starting_player
+            == Connect4Board.PLAYER_ONE
+        ):
+            return Connect4Board.PLAYER_TWO
+
+        return Connect4Board.PLAYER_ONE
+
+    @staticmethod
+    def _validate_player_id(
+        player_id: int,
+    ) -> int:
+        player_id = int(player_id)
+
+        if player_id not in (
+            Connect4Board.PLAYER_ONE,
+            Connect4Board.PLAYER_TWO,
+        ):
+            raise ValueError(
+                "starting player must be 1 or 2, "
+                f"got {player_id!r}"
+            )
+
+        return player_id
 
     # ------------------------------------------------------------------
     # Human input
@@ -253,9 +419,6 @@ class Connect4Match:
     def update(self) -> TurnResult | None:
         """
         Ask the current player for a move and commit it.
-
-        This synchronous method remains useful for human turns, tests,
-        headless matches, and benchmarks.
         """
         if not self.is_running:
             return None
@@ -290,10 +453,7 @@ class Connect4Match:
         """
         Commit a move calculated outside the main match loop.
 
-        The expected player and move count guard against stale background
-        results after a restart, screen change, or another committed move.
-
-        Returns None when the result is stale.
+        Returns None when the background result has become stale.
         """
         if not self.is_running:
             return None
@@ -353,7 +513,9 @@ class Connect4Match:
                 f"{self.board.legal_moves()}"
             )
 
-        move = self.board.play(column)
+        move = self.board.play(
+            column
+        )
 
         self.latest_analysis = (
             move_result.analysis
@@ -447,4 +609,3 @@ class Connect4Match:
         return self.analysis_history[
             move_index
         ]
-

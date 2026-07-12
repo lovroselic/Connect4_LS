@@ -1,14 +1,11 @@
 {
     "show_test_menu": true,
     "show_analysis_panel": true,
-
     "window_width": 1280,
     "window_height": 800,
     "fullscreen": false,
-
     "target_fps": 60,
     "animation_speed": 1.0,
     "ai_move_delay_ms": 300,
-
     "window_title": "Connect4_LS"
 }
