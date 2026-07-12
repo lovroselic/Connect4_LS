@@ -493,5 +493,17 @@ class Application:
         except Exception:
             pass
 
+        try:
+            Button.set_activation_sound_callback(
+                None
+            )
+        except Exception:
+            pass
+
+        try:
+            self.audio.shutdown()
+        except Exception:
+            pass
+
         FONTS.clear()
         pygame.quit()

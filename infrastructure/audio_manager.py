@@ -6,6 +6,8 @@ from pathlib import Path
 
 import pygame
 
+from app.paths import ASSETS_DIR
+
 
 class AudioManager:
     """
@@ -41,15 +43,8 @@ class AudioManager:
         ] = {}
 
         if audio_directory is None:
-            project_root = (
-                Path(__file__)
-                .resolve()
-                .parents[1]
-            )
-
             audio_directory = (
-                project_root
-                / "assets"
+                ASSETS_DIR
                 / "audio"
             )
 

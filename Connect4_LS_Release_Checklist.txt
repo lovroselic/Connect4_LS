@@ -1,0 +1,268 @@
+CONNECT4_LS — FUTURE RELEASE CHECKLIST
+========================================
+
+Use this checklist whenever you change the game and want to publish a new Windows release.
+
+PROJECT ROOT
+------------
+C:\Users\Uporabnik\Documents\Python\Connect4_LS
+
+
+1. UPDATE THE APPLICATION VERSION
+---------------------------------
+
+Edit:
+
+    app\version.py
+
+Example:
+
+    __version__ = "0.6.1"
+
+Use semantic versioning where practical:
+
+    MAJOR.MINOR.PATCH
+
+Examples:
+
+    0.6.1   small bug fix
+    0.7.0   new feature
+    1.0.0   first official stable release
+
+
+2. UPDATE WINDOWS VERSION METADATA
+----------------------------------
+
+Edit:
+
+    version_info.txt
+
+Update both numeric tuples:
+
+    filevers=(0, 6, 1, 0),
+    prodvers=(0, 6, 1, 0),
+
+Update both text fields:
+
+    "FileVersion", "0.6.1"
+    "ProductVersion", "0.6.1"
+
+The numeric tuple must contain four integers.
+
+For version 1.2.3 use:
+
+    filevers=(1, 2, 3, 0)
+    prodvers=(1, 2, 3, 0)
+
+
+3. UPDATE THE RELEASE ZIP NAME
+------------------------------
+
+Edit:
+
+    build_release.ps1
+
+Find:
+
+    $ReleaseName = "Connect4_LS-v0.6.0-win64"
+
+Change it to the new version, for example:
+
+    $ReleaseName = "Connect4_LS-v0.6.1-win64"
+
+This controls the ZIP filename created in the dist folder.
+
+
+4. OPTIONAL DOCUMENTATION UPDATES
+---------------------------------
+
+Update when relevant:
+
+    README.md
+
+Typical reasons:
+
+    - new features
+    - changed controls
+    - renamed assets
+    - changed dependencies
+    - changed screenshots
+    - new installation notes
+
+The About screen reads the version from app\version.py automatically, so its version number does not need a separate edit.
+
+
+5. TEST THE PYTHON VERSION FIRST
+--------------------------------
+
+Activate the project environment:
+
+    conda activate Connect4_LS
+
+Run:
+
+    python C:\Users\Uporabnik\Documents\Python\Connect4_LS\main.py
+
+Test the changed feature before building.
+
+Minimum quick test:
+
+    - main menu opens
+    - title image appears
+    - audio works
+    - Human vs Human works
+    - Lookahead works
+    - PPO works
+    - Hint works
+    - settings save correctly
+
+
+6. BUILD THE FINAL RELEASE
+--------------------------
+
+Double-click:
+
+    Build_Connect4_LS.cmd
+
+That file:
+
+    - activates the Connect4_LS Conda environment
+    - runs build_release.ps1
+    - deletes the previous build output
+    - creates the windowed PyInstaller build
+    - creates the portable ZIP
+
+Expected output:
+
+    dist\Connect4_LS\Connect4_LS.exe
+
+and:
+
+    dist\Connect4_LS-vX.Y.Z-win64.zip
+
+
+7. TEST THE FROZEN BUILD
+------------------------
+
+Run:
+
+    dist\Connect4_LS\Connect4_LS.exe
+
+Test at least:
+
+    - no console window appears
+    - C4.ico is shown
+    - title artwork loads
+    - all sounds load
+    - Human vs Human works
+    - Lookahead starts and completes a move
+    - PPO model loads and moves
+    - LA13 Hint works
+    - About links open
+    - settings persist after restart
+
+Also check:
+
+    Right-click Connect4_LS.exe
+    Properties
+    Details
+
+Confirm:
+
+    - File version is correct
+    - Product version is correct
+    - Product name is Connect4_LS
+    - Company name is LaughingSkull
+
+
+8. TEST THE ZIP ITSELF
+----------------------
+
+Do not assume the ZIP is valid merely because it exists.
+
+Create a temporary test folder, for example:
+
+    C:\Temp\Connect4_LS_Test
+
+Extract the release ZIP there.
+
+Run:
+
+    C:\Temp\Connect4_LS_Test\Connect4_LS\Connect4_LS.exe
+
+This confirms that the game does not depend on files left behind in the development project.
+
+
+9. DISTRIBUTE THE CORRECT FILE
+------------------------------
+
+Distribute:
+
+    Connect4_LS-vX.Y.Z-win64.zip
+
+Do not distribute only:
+
+    Connect4_LS.exe
+
+The game is a PyInstaller one-folder build, so it needs the entire Connect4_LS directory contained in the ZIP.
+
+Tell users:
+
+    1. Download the ZIP
+    2. Extract it
+    3. Open the extracted Connect4_LS folder
+    4. Run Connect4_LS.exe
+
+Do not run the game directly from inside the ZIP.
+
+
+10. RELEASE FILES THAT SHOULD STAY IN THE PROJECT ROOT
+------------------------------------------------------
+
+Keep these files:
+
+    C4.ico
+    Connect4_LS.spec
+    version_info.txt
+    build_release.ps1
+    Build_Connect4_LS.cmd
+
+Do not delete them after a successful release.
+
+
+11. USER DATA LOCATION
+----------------------
+
+The installed or portable game writes user settings and caches here:
+
+    %LOCALAPPDATA%\LaughingSkull\Connect4_LS
+
+Typical contents:
+
+    config\settings.json
+    numba_cache\
+    logs\
+    replays\
+    results\
+
+This data is not bundled into the release ZIP.
+
+
+12. CLEAN RELEASE SUMMARY
+-------------------------
+
+For each new release:
+
+    1. Update app\version.py
+    2. Update version_info.txt
+    3. Update $ReleaseName in build_release.ps1
+    4. Update README.md if needed
+    5. Run the Python version
+    6. Double-click Build_Connect4_LS.cmd
+    7. Test dist\Connect4_LS\Connect4_LS.exe
+    8. Extract and test the generated ZIP
+    9. Publish the ZIP
+
+That is the complete release ritual.
+
+The discs will still fall downward. Everything else should be verified.

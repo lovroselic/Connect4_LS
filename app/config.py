@@ -7,10 +7,13 @@ from dataclasses import asdict, dataclass, fields
 from pathlib import Path
 from typing import Any, Mapping
 
-from app.paths import CONFIG_DIR
+from app.paths import (
+    DEFAULT_SETTINGS_TEMPLATE_PATH,
+    SETTINGS_PATH,
+)
 
 
-DEFAULT_SETTINGS_PATH = CONFIG_DIR / "settings.json"
+DEFAULT_SETTINGS_PATH = SETTINGS_PATH
 
 
 @dataclass(slots=True)
@@ -46,7 +49,15 @@ class AppConfig:
         Missing files, malformed JSON, unknown keys and invalid values are
         handled safely. Unknown keys are ignored.
         """
-        config_path = Path(path)
+        requested_path = Path(path)
+        config_path = requested_path
+
+        if (
+            requested_path == DEFAULT_SETTINGS_PATH
+            and not requested_path.exists()
+            and DEFAULT_SETTINGS_TEMPLATE_PATH.exists()
+        ):
+            config_path = DEFAULT_SETTINGS_TEMPLATE_PATH
 
         if not config_path.exists():
             print(

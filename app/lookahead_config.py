@@ -7,14 +7,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
-from app.paths import PROJECT_ROOT
-
-
-LOOKAHEAD_CONFIG_PATH = (
-    PROJECT_ROOT
-    / "config"
-    / "lookahead.json"
-)
+from app.paths import LOOKAHEAD_CONFIG_PATH
 
 
 @dataclass(frozen=True, slots=True)

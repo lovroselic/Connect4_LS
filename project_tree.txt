@@ -1,0 +1,458 @@
+Folder PATH listing
+Volume serial number is 00000075 6C2E:1F8B
+C:.
+|   .gitignore
+|   create_connect4_project.bat
+|   environment.yml
+|   main.py
+|   project_tree.txt
+|   README.md
+|   requirements.txt
+|   
++---.spyproject
+|   \---config
+|       |   codestyle.ini
+|       |   encoding.ini
+|       |   vcs.ini
+|       |   workspace.ini
+|       |   
+|       +---backups
+|       |       codestyle.ini.bak
+|       |       encoding.ini.bak
+|       |       vcs.ini.bak
+|       |       workspace.ini.bak
+|       |       
+|       \---defaults
+|               defaults-codestyle-0.2.0.ini
+|               defaults-encoding-0.2.0.ini
+|               defaults-vcs-0.2.0.ini
+|               defaults-workspace-0.2.0.ini
+|               
++---agents
+|   |   __init__.py
+|   |   
+|   +---lookahead
+|   |   |   engine.py
+|   |   |   __init__.py
+|   |   |   
+|   |   \---__pycache__
+|   |           engine.cpython-311.pyc
+|   |           engine._ensure_numba_cache.locals.can_play-158.py311.1.nbc
+|   |           engine._ensure_numba_cache.locals.can_play-158.py311.nbi
+|   |           engine._ensure_numba_cache.locals.count_immediate_wins_bits-174.py311.1.nbc
+|   |           engine._ensure_numba_cache.locals.count_immediate_wins_bits-174.py311.10.nbc
+|   |           engine._ensure_numba_cache.locals.count_immediate_wins_bits-174.py311.11.nbc
+|   |           engine._ensure_numba_cache.locals.count_immediate_wins_bits-174.py311.12.nbc
+|   |           engine._ensure_numba_cache.locals.count_immediate_wins_bits-174.py311.13.nbc
+|   |           engine._ensure_numba_cache.locals.count_immediate_wins_bits-174.py311.2.nbc
+|   |           engine._ensure_numba_cache.locals.count_immediate_wins_bits-174.py311.3.nbc
+|   |           engine._ensure_numba_cache.locals.count_immediate_wins_bits-174.py311.4.nbc
+|   |           engine._ensure_numba_cache.locals.count_immediate_wins_bits-174.py311.5.nbc
+|   |           engine._ensure_numba_cache.locals.count_immediate_wins_bits-174.py311.6.nbc
+|   |           engine._ensure_numba_cache.locals.count_immediate_wins_bits-174.py311.7.nbc
+|   |           engine._ensure_numba_cache.locals.count_immediate_wins_bits-174.py311.8.nbc
+|   |           engine._ensure_numba_cache.locals.count_immediate_wins_bits-174.py311.9.nbc
+|   |           engine._ensure_numba_cache.locals.count_immediate_wins_bits-174.py311.nbi
+|   |           engine._ensure_numba_cache.locals.count_safe_moves-353.py311.1.nbc
+|   |           engine._ensure_numba_cache.locals.count_safe_moves-353.py311.10.nbc
+|   |           engine._ensure_numba_cache.locals.count_safe_moves-353.py311.11.nbc
+|   |           engine._ensure_numba_cache.locals.count_safe_moves-353.py311.12.nbc
+|   |           engine._ensure_numba_cache.locals.count_safe_moves-353.py311.13.nbc
+|   |           engine._ensure_numba_cache.locals.count_safe_moves-353.py311.2.nbc
+|   |           engine._ensure_numba_cache.locals.count_safe_moves-353.py311.3.nbc
+|   |           engine._ensure_numba_cache.locals.count_safe_moves-353.py311.4.nbc
+|   |           engine._ensure_numba_cache.locals.count_safe_moves-353.py311.5.nbc
+|   |           engine._ensure_numba_cache.locals.count_safe_moves-353.py311.6.nbc
+|   |           engine._ensure_numba_cache.locals.count_safe_moves-353.py311.7.nbc
+|   |           engine._ensure_numba_cache.locals.count_safe_moves-353.py311.8.nbc
+|   |           engine._ensure_numba_cache.locals.count_safe_moves-353.py311.9.nbc
+|   |           engine._ensure_numba_cache.locals.count_safe_moves-353.py311.nbi
+|   |           engine._ensure_numba_cache.locals.evaluate-368.py311.1.nbc
+|   |           engine._ensure_numba_cache.locals.evaluate-368.py311.10.nbc
+|   |           engine._ensure_numba_cache.locals.evaluate-368.py311.11.nbc
+|   |           engine._ensure_numba_cache.locals.evaluate-368.py311.12.nbc
+|   |           engine._ensure_numba_cache.locals.evaluate-368.py311.13.nbc
+|   |           engine._ensure_numba_cache.locals.evaluate-368.py311.2.nbc
+|   |           engine._ensure_numba_cache.locals.evaluate-368.py311.3.nbc
+|   |           engine._ensure_numba_cache.locals.evaluate-368.py311.4.nbc
+|   |           engine._ensure_numba_cache.locals.evaluate-368.py311.5.nbc
+|   |           engine._ensure_numba_cache.locals.evaluate-368.py311.6.nbc
+|   |           engine._ensure_numba_cache.locals.evaluate-368.py311.7.nbc
+|   |           engine._ensure_numba_cache.locals.evaluate-368.py311.8.nbc
+|   |           engine._ensure_numba_cache.locals.evaluate-368.py311.9.nbc
+|   |           engine._ensure_numba_cache.locals.evaluate-368.py311.nbi
+|   |           engine._ensure_numba_cache.locals.find_forced_win_in_2_move_root-326.py311.1.nbc
+|   |           engine._ensure_numba_cache.locals.find_forced_win_in_2_move_root-326.py311.10.nbc
+|   |           engine._ensure_numba_cache.locals.find_forced_win_in_2_move_root-326.py311.11.nbc
+|   |           engine._ensure_numba_cache.locals.find_forced_win_in_2_move_root-326.py311.12.nbc
+|   |           engine._ensure_numba_cache.locals.find_forced_win_in_2_move_root-326.py311.13.nbc
+|   |           engine._ensure_numba_cache.locals.find_forced_win_in_2_move_root-326.py311.2.nbc
+|   |           engine._ensure_numba_cache.locals.find_forced_win_in_2_move_root-326.py311.3.nbc
+|   |           engine._ensure_numba_cache.locals.find_forced_win_in_2_move_root-326.py311.4.nbc
+|   |           engine._ensure_numba_cache.locals.find_forced_win_in_2_move_root-326.py311.5.nbc
+|   |           engine._ensure_numba_cache.locals.find_forced_win_in_2_move_root-326.py311.6.nbc
+|   |           engine._ensure_numba_cache.locals.find_forced_win_in_2_move_root-326.py311.7.nbc
+|   |           engine._ensure_numba_cache.locals.find_forced_win_in_2_move_root-326.py311.8.nbc
+|   |           engine._ensure_numba_cache.locals.find_forced_win_in_2_move_root-326.py311.9.nbc
+|   |           engine._ensure_numba_cache.locals.find_forced_win_in_2_move_root-326.py311.nbi
+|   |           engine._ensure_numba_cache.locals.find_fork_move_root-278.py311.1.nbc
+|   |           engine._ensure_numba_cache.locals.find_fork_move_root-278.py311.10.nbc
+|   |           engine._ensure_numba_cache.locals.find_fork_move_root-278.py311.11.nbc
+|   |           engine._ensure_numba_cache.locals.find_fork_move_root-278.py311.12.nbc
+|   |           engine._ensure_numba_cache.locals.find_fork_move_root-278.py311.13.nbc
+|   |           engine._ensure_numba_cache.locals.find_fork_move_root-278.py311.2.nbc
+|   |           engine._ensure_numba_cache.locals.find_fork_move_root-278.py311.3.nbc
+|   |           engine._ensure_numba_cache.locals.find_fork_move_root-278.py311.4.nbc
+|   |           engine._ensure_numba_cache.locals.find_fork_move_root-278.py311.5.nbc
+|   |           engine._ensure_numba_cache.locals.find_fork_move_root-278.py311.6.nbc
+|   |           engine._ensure_numba_cache.locals.find_fork_move_root-278.py311.7.nbc
+|   |           engine._ensure_numba_cache.locals.find_fork_move_root-278.py311.8.nbc
+|   |           engine._ensure_numba_cache.locals.find_fork_move_root-278.py311.9.nbc
+|   |           engine._ensure_numba_cache.locals.find_fork_move_root-278.py311.nbi
+|   |           engine._ensure_numba_cache.locals.has_any_immediate_win_bits-189.py311.1.nbc
+|   |           engine._ensure_numba_cache.locals.has_any_immediate_win_bits-189.py311.10.nbc
+|   |           engine._ensure_numba_cache.locals.has_any_immediate_win_bits-189.py311.11.nbc
+|   |           engine._ensure_numba_cache.locals.has_any_immediate_win_bits-189.py311.12.nbc
+|   |           engine._ensure_numba_cache.locals.has_any_immediate_win_bits-189.py311.13.nbc
+|   |           engine._ensure_numba_cache.locals.has_any_immediate_win_bits-189.py311.2.nbc
+|   |           engine._ensure_numba_cache.locals.has_any_immediate_win_bits-189.py311.3.nbc
+|   |           engine._ensure_numba_cache.locals.has_any_immediate_win_bits-189.py311.4.nbc
+|   |           engine._ensure_numba_cache.locals.has_any_immediate_win_bits-189.py311.5.nbc
+|   |           engine._ensure_numba_cache.locals.has_any_immediate_win_bits-189.py311.6.nbc
+|   |           engine._ensure_numba_cache.locals.has_any_immediate_win_bits-189.py311.7.nbc
+|   |           engine._ensure_numba_cache.locals.has_any_immediate_win_bits-189.py311.8.nbc
+|   |           engine._ensure_numba_cache.locals.has_any_immediate_win_bits-189.py311.9.nbc
+|   |           engine._ensure_numba_cache.locals.has_any_immediate_win_bits-189.py311.nbi
+|   |           engine._ensure_numba_cache.locals.has_two_immediate_wins_bits-201.py311.1.nbc
+|   |           engine._ensure_numba_cache.locals.has_two_immediate_wins_bits-201.py311.10.nbc
+|   |           engine._ensure_numba_cache.locals.has_two_immediate_wins_bits-201.py311.11.nbc
+|   |           engine._ensure_numba_cache.locals.has_two_immediate_wins_bits-201.py311.12.nbc
+|   |           engine._ensure_numba_cache.locals.has_two_immediate_wins_bits-201.py311.13.nbc
+|   |           engine._ensure_numba_cache.locals.has_two_immediate_wins_bits-201.py311.2.nbc
+|   |           engine._ensure_numba_cache.locals.has_two_immediate_wins_bits-201.py311.3.nbc
+|   |           engine._ensure_numba_cache.locals.has_two_immediate_wins_bits-201.py311.4.nbc
+|   |           engine._ensure_numba_cache.locals.has_two_immediate_wins_bits-201.py311.5.nbc
+|   |           engine._ensure_numba_cache.locals.has_two_immediate_wins_bits-201.py311.6.nbc
+|   |           engine._ensure_numba_cache.locals.has_two_immediate_wins_bits-201.py311.7.nbc
+|   |           engine._ensure_numba_cache.locals.has_two_immediate_wins_bits-201.py311.8.nbc
+|   |           engine._ensure_numba_cache.locals.has_two_immediate_wins_bits-201.py311.9.nbc
+|   |           engine._ensure_numba_cache.locals.has_two_immediate_wins_bits-201.py311.nbi
+|   |           engine._ensure_numba_cache.locals.has_won-142.py311.1.nbc
+|   |           engine._ensure_numba_cache.locals.has_won-142.py311.nbi
+|   |           engine._ensure_numba_cache.locals.is_forced_win_in_2_bits-294.py311.1.nbc
+|   |           engine._ensure_numba_cache.locals.is_forced_win_in_2_bits-294.py311.10.nbc
+|   |           engine._ensure_numba_cache.locals.is_forced_win_in_2_bits-294.py311.11.nbc
+|   |           engine._ensure_numba_cache.locals.is_forced_win_in_2_bits-294.py311.12.nbc
+|   |           engine._ensure_numba_cache.locals.is_forced_win_in_2_bits-294.py311.13.nbc
+|   |           engine._ensure_numba_cache.locals.is_forced_win_in_2_bits-294.py311.2.nbc
+|   |           engine._ensure_numba_cache.locals.is_forced_win_in_2_bits-294.py311.3.nbc
+|   |           engine._ensure_numba_cache.locals.is_forced_win_in_2_bits-294.py311.4.nbc
+|   |           engine._ensure_numba_cache.locals.is_forced_win_in_2_bits-294.py311.5.nbc
+|   |           engine._ensure_numba_cache.locals.is_forced_win_in_2_bits-294.py311.6.nbc
+|   |           engine._ensure_numba_cache.locals.is_forced_win_in_2_bits-294.py311.7.nbc
+|   |           engine._ensure_numba_cache.locals.is_forced_win_in_2_bits-294.py311.8.nbc
+|   |           engine._ensure_numba_cache.locals.is_forced_win_in_2_bits-294.py311.9.nbc
+|   |           engine._ensure_numba_cache.locals.is_forced_win_in_2_bits-294.py311.nbi
+|   |           engine._ensure_numba_cache.locals.is_immediate_blunder-338.py311.1.nbc
+|   |           engine._ensure_numba_cache.locals.is_immediate_blunder-338.py311.10.nbc
+|   |           engine._ensure_numba_cache.locals.is_immediate_blunder-338.py311.11.nbc
+|   |           engine._ensure_numba_cache.locals.is_immediate_blunder-338.py311.12.nbc
+|   |           engine._ensure_numba_cache.locals.is_immediate_blunder-338.py311.13.nbc
+|   |           engine._ensure_numba_cache.locals.is_immediate_blunder-338.py311.2.nbc
+|   |           engine._ensure_numba_cache.locals.is_immediate_blunder-338.py311.3.nbc
+|   |           engine._ensure_numba_cache.locals.is_immediate_blunder-338.py311.4.nbc
+|   |           engine._ensure_numba_cache.locals.is_immediate_blunder-338.py311.5.nbc
+|   |           engine._ensure_numba_cache.locals.is_immediate_blunder-338.py311.6.nbc
+|   |           engine._ensure_numba_cache.locals.is_immediate_blunder-338.py311.7.nbc
+|   |           engine._ensure_numba_cache.locals.is_immediate_blunder-338.py311.8.nbc
+|   |           engine._ensure_numba_cache.locals.is_immediate_blunder-338.py311.9.nbc
+|   |           engine._ensure_numba_cache.locals.is_immediate_blunder-338.py311.nbi
+|   |           engine._ensure_numba_cache.locals.is_winning_move-166.py311.1.nbc
+|   |           engine._ensure_numba_cache.locals.is_winning_move-166.py311.10.nbc
+|   |           engine._ensure_numba_cache.locals.is_winning_move-166.py311.11.nbc
+|   |           engine._ensure_numba_cache.locals.is_winning_move-166.py311.12.nbc
+|   |           engine._ensure_numba_cache.locals.is_winning_move-166.py311.13.nbc
+|   |           engine._ensure_numba_cache.locals.is_winning_move-166.py311.2.nbc
+|   |           engine._ensure_numba_cache.locals.is_winning_move-166.py311.3.nbc
+|   |           engine._ensure_numba_cache.locals.is_winning_move-166.py311.4.nbc
+|   |           engine._ensure_numba_cache.locals.is_winning_move-166.py311.5.nbc
+|   |           engine._ensure_numba_cache.locals.is_winning_move-166.py311.6.nbc
+|   |           engine._ensure_numba_cache.locals.is_winning_move-166.py311.7.nbc
+|   |           engine._ensure_numba_cache.locals.is_winning_move-166.py311.8.nbc
+|   |           engine._ensure_numba_cache.locals.is_winning_move-166.py311.9.nbc
+|   |           engine._ensure_numba_cache.locals.is_winning_move-166.py311.nbi
+|   |           engine._ensure_numba_cache.locals.negamax-575.py311.1.nbc
+|   |           engine._ensure_numba_cache.locals.negamax-575.py311.10.nbc
+|   |           engine._ensure_numba_cache.locals.negamax-575.py311.11.nbc
+|   |           engine._ensure_numba_cache.locals.negamax-575.py311.12.nbc
+|   |           engine._ensure_numba_cache.locals.negamax-575.py311.13.nbc
+|   |           engine._ensure_numba_cache.locals.negamax-575.py311.2.nbc
+|   |           engine._ensure_numba_cache.locals.negamax-575.py311.3.nbc
+|   |           engine._ensure_numba_cache.locals.negamax-575.py311.4.nbc
+|   |           engine._ensure_numba_cache.locals.negamax-575.py311.5.nbc
+|   |           engine._ensure_numba_cache.locals.negamax-575.py311.6.nbc
+|   |           engine._ensure_numba_cache.locals.negamax-575.py311.7.nbc
+|   |           engine._ensure_numba_cache.locals.negamax-575.py311.8.nbc
+|   |           engine._ensure_numba_cache.locals.negamax-575.py311.9.nbc
+|   |           engine._ensure_numba_cache.locals.negamax-575.py311.nbi
+|   |           engine._ensure_numba_cache.locals.opp_can_reply_create_double_threat-230.py311.1.nbc
+|   |           engine._ensure_numba_cache.locals.opp_can_reply_create_double_threat-230.py311.10.nbc
+|   |           engine._ensure_numba_cache.locals.opp_can_reply_create_double_threat-230.py311.11.nbc
+|   |           engine._ensure_numba_cache.locals.opp_can_reply_create_double_threat-230.py311.12.nbc
+|   |           engine._ensure_numba_cache.locals.opp_can_reply_create_double_threat-230.py311.13.nbc
+|   |           engine._ensure_numba_cache.locals.opp_can_reply_create_double_threat-230.py311.2.nbc
+|   |           engine._ensure_numba_cache.locals.opp_can_reply_create_double_threat-230.py311.3.nbc
+|   |           engine._ensure_numba_cache.locals.opp_can_reply_create_double_threat-230.py311.4.nbc
+|   |           engine._ensure_numba_cache.locals.opp_can_reply_create_double_threat-230.py311.5.nbc
+|   |           engine._ensure_numba_cache.locals.opp_can_reply_create_double_threat-230.py311.6.nbc
+|   |           engine._ensure_numba_cache.locals.opp_can_reply_create_double_threat-230.py311.7.nbc
+|   |           engine._ensure_numba_cache.locals.opp_can_reply_create_double_threat-230.py311.8.nbc
+|   |           engine._ensure_numba_cache.locals.opp_can_reply_create_double_threat-230.py311.9.nbc
+|   |           engine._ensure_numba_cache.locals.opp_can_reply_create_double_threat-230.py311.nbi
+|   |           engine._ensure_numba_cache.locals.opp_has_double_threat_after_my_move-216.py311.1.nbc
+|   |           engine._ensure_numba_cache.locals.opp_has_double_threat_after_my_move-216.py311.10.nbc
+|   |           engine._ensure_numba_cache.locals.opp_has_double_threat_after_my_move-216.py311.11.nbc
+|   |           engine._ensure_numba_cache.locals.opp_has_double_threat_after_my_move-216.py311.12.nbc
+|   |           engine._ensure_numba_cache.locals.opp_has_double_threat_after_my_move-216.py311.13.nbc
+|   |           engine._ensure_numba_cache.locals.opp_has_double_threat_after_my_move-216.py311.2.nbc
+|   |           engine._ensure_numba_cache.locals.opp_has_double_threat_after_my_move-216.py311.3.nbc
+|   |           engine._ensure_numba_cache.locals.opp_has_double_threat_after_my_move-216.py311.4.nbc
+|   |           engine._ensure_numba_cache.locals.opp_has_double_threat_after_my_move-216.py311.5.nbc
+|   |           engine._ensure_numba_cache.locals.opp_has_double_threat_after_my_move-216.py311.6.nbc
+|   |           engine._ensure_numba_cache.locals.opp_has_double_threat_after_my_move-216.py311.7.nbc
+|   |           engine._ensure_numba_cache.locals.opp_has_double_threat_after_my_move-216.py311.8.nbc
+|   |           engine._ensure_numba_cache.locals.opp_has_double_threat_after_my_move-216.py311.9.nbc
+|   |           engine._ensure_numba_cache.locals.opp_has_double_threat_after_my_move-216.py311.nbi
+|   |           engine._ensure_numba_cache.locals.order_moves-478.py311.1.nbc
+|   |           engine._ensure_numba_cache.locals.order_moves-478.py311.10.nbc
+|   |           engine._ensure_numba_cache.locals.order_moves-478.py311.11.nbc
+|   |           engine._ensure_numba_cache.locals.order_moves-478.py311.12.nbc
+|   |           engine._ensure_numba_cache.locals.order_moves-478.py311.13.nbc
+|   |           engine._ensure_numba_cache.locals.order_moves-478.py311.2.nbc
+|   |           engine._ensure_numba_cache.locals.order_moves-478.py311.3.nbc
+|   |           engine._ensure_numba_cache.locals.order_moves-478.py311.4.nbc
+|   |           engine._ensure_numba_cache.locals.order_moves-478.py311.5.nbc
+|   |           engine._ensure_numba_cache.locals.order_moves-478.py311.6.nbc
+|   |           engine._ensure_numba_cache.locals.order_moves-478.py311.7.nbc
+|   |           engine._ensure_numba_cache.locals.order_moves-478.py311.8.nbc
+|   |           engine._ensure_numba_cache.locals.order_moves-478.py311.9.nbc
+|   |           engine._ensure_numba_cache.locals.order_moves-478.py311.nbi
+|   |           engine._ensure_numba_cache.locals.play_bit-162.py311.1.nbc
+|   |           engine._ensure_numba_cache.locals.play_bit-162.py311.nbi
+|   |           engine._ensure_numba_cache.locals.popcount64-135.py311.1.nbc
+|   |           engine._ensure_numba_cache.locals.popcount64-135.py311.nbi
+|   |           engine._ensure_numba_cache.locals.root_select_fixed-741.py311.1.nbc
+|   |           engine._ensure_numba_cache.locals.root_select_fixed-741.py311.10.nbc
+|   |           engine._ensure_numba_cache.locals.root_select_fixed-741.py311.11.nbc
+|   |           engine._ensure_numba_cache.locals.root_select_fixed-741.py311.12.nbc
+|   |           engine._ensure_numba_cache.locals.root_select_fixed-741.py311.13.nbc
+|   |           engine._ensure_numba_cache.locals.root_select_fixed-741.py311.2.nbc
+|   |           engine._ensure_numba_cache.locals.root_select_fixed-741.py311.3.nbc
+|   |           engine._ensure_numba_cache.locals.root_select_fixed-741.py311.4.nbc
+|   |           engine._ensure_numba_cache.locals.root_select_fixed-741.py311.5.nbc
+|   |           engine._ensure_numba_cache.locals.root_select_fixed-741.py311.6.nbc
+|   |           engine._ensure_numba_cache.locals.root_select_fixed-741.py311.7.nbc
+|   |           engine._ensure_numba_cache.locals.root_select_fixed-741.py311.8.nbc
+|   |           engine._ensure_numba_cache.locals.root_select_fixed-741.py311.9.nbc
+|   |           engine._ensure_numba_cache.locals.root_select_fixed-741.py311.nbi
+|   |           engine._ensure_numba_cache.locals.should_stop-570.py311.1.nbc
+|   |           engine._ensure_numba_cache.locals.should_stop-570.py311.nbi
+|   |           engine._ensure_numba_cache.locals.threat_count_after_move-264.py311.1.nbc
+|   |           engine._ensure_numba_cache.locals.threat_count_after_move-264.py311.10.nbc
+|   |           engine._ensure_numba_cache.locals.threat_count_after_move-264.py311.11.nbc
+|   |           engine._ensure_numba_cache.locals.threat_count_after_move-264.py311.12.nbc
+|   |           engine._ensure_numba_cache.locals.threat_count_after_move-264.py311.13.nbc
+|   |           engine._ensure_numba_cache.locals.threat_count_after_move-264.py311.2.nbc
+|   |           engine._ensure_numba_cache.locals.threat_count_after_move-264.py311.3.nbc
+|   |           engine._ensure_numba_cache.locals.threat_count_after_move-264.py311.4.nbc
+|   |           engine._ensure_numba_cache.locals.threat_count_after_move-264.py311.5.nbc
+|   |           engine._ensure_numba_cache.locals.threat_count_after_move-264.py311.6.nbc
+|   |           engine._ensure_numba_cache.locals.threat_count_after_move-264.py311.7.nbc
+|   |           engine._ensure_numba_cache.locals.threat_count_after_move-264.py311.8.nbc
+|   |           engine._ensure_numba_cache.locals.threat_count_after_move-264.py311.9.nbc
+|   |           engine._ensure_numba_cache.locals.threat_count_after_move-264.py311.nbi
+|   |           engine._ensure_numba_cache.locals.tt_hash_local-508.py311.1.nbc
+|   |           engine._ensure_numba_cache.locals.tt_hash_local-508.py311.nbi
+|   |           engine._ensure_numba_cache.locals.tt_lookup-514.py311.1.nbc
+|   |           engine._ensure_numba_cache.locals.tt_lookup-514.py311.10.nbc
+|   |           engine._ensure_numba_cache.locals.tt_lookup-514.py311.11.nbc
+|   |           engine._ensure_numba_cache.locals.tt_lookup-514.py311.12.nbc
+|   |           engine._ensure_numba_cache.locals.tt_lookup-514.py311.13.nbc
+|   |           engine._ensure_numba_cache.locals.tt_lookup-514.py311.2.nbc
+|   |           engine._ensure_numba_cache.locals.tt_lookup-514.py311.3.nbc
+|   |           engine._ensure_numba_cache.locals.tt_lookup-514.py311.4.nbc
+|   |           engine._ensure_numba_cache.locals.tt_lookup-514.py311.5.nbc
+|   |           engine._ensure_numba_cache.locals.tt_lookup-514.py311.6.nbc
+|   |           engine._ensure_numba_cache.locals.tt_lookup-514.py311.7.nbc
+|   |           engine._ensure_numba_cache.locals.tt_lookup-514.py311.8.nbc
+|   |           engine._ensure_numba_cache.locals.tt_lookup-514.py311.9.nbc
+|   |           engine._ensure_numba_cache.locals.tt_lookup-514.py311.nbi
+|   |           engine._ensure_numba_cache.locals.tt_store-541.py311.1.nbc
+|   |           engine._ensure_numba_cache.locals.tt_store-541.py311.10.nbc
+|   |           engine._ensure_numba_cache.locals.tt_store-541.py311.11.nbc
+|   |           engine._ensure_numba_cache.locals.tt_store-541.py311.12.nbc
+|   |           engine._ensure_numba_cache.locals.tt_store-541.py311.13.nbc
+|   |           engine._ensure_numba_cache.locals.tt_store-541.py311.2.nbc
+|   |           engine._ensure_numba_cache.locals.tt_store-541.py311.3.nbc
+|   |           engine._ensure_numba_cache.locals.tt_store-541.py311.4.nbc
+|   |           engine._ensure_numba_cache.locals.tt_store-541.py311.5.nbc
+|   |           engine._ensure_numba_cache.locals.tt_store-541.py311.6.nbc
+|   |           engine._ensure_numba_cache.locals.tt_store-541.py311.7.nbc
+|   |           engine._ensure_numba_cache.locals.tt_store-541.py311.8.nbc
+|   |           engine._ensure_numba_cache.locals.tt_store-541.py311.9.nbc
+|   |           engine._ensure_numba_cache.locals.tt_store-541.py311.nbi
+|   |           __init__.cpython-311.pyc
+|   |           
+|   +---ppo
+|   |   |   model.py
+|   |   |   __init__.py
+|   |   |   
+|   |   \---__pycache__
+|   |           model.cpython-311.pyc
+|   |           __init__.cpython-311.pyc
+|   |           
+|   \---__pycache__
+|           __init__.cpython-311.pyc
+|           
++---app
+|   |   application.py
+|   |   config.py
+|   |   lookahead_config.py
+|   |   paths.py
+|   |   state.py
+|   |   version.py
+|   |   __init__.py
+|   |   
+|   \---__pycache__
+|           application.cpython-311.pyc
+|           config.cpython-311.pyc
+|           lookahead_config.cpython-311.pyc
+|           paths.cpython-311.pyc
+|           state.cpython-311.pyc
+|           version.cpython-311.pyc
+|           __init__.cpython-311.pyc
+|           
++---assets
+|   +---audio
+|   |       .gitkeep
+|   |       button_click.mp3
+|   |       disc_drop.mp3
+|   |       win.mp3
+|   |       
+|   \---images
+|           .gitkeep
+|           connect4_title.webp
+|           
++---build
+|       .gitkeep
+|       
++---config
+|       lookahead.json
+|       settings.json
+|       
++---game
+|   |   board.py
+|   |   headless.py
+|   |   match.py
+|   |   tournament.py
+|   |   __init__.py
+|   |   
+|   \---__pycache__
+|           board.cpython-311.pyc
+|           headless.cpython-311.pyc
+|           match.cpython-311.pyc
+|           tournament.cpython-311.pyc
+|           __init__.cpython-311.pyc
+|           
++---infrastructure
+|   |   audio_manager.py
+|   |   background_task.py
+|   |   headless_runner.py
+|   |   task_manager.py
+|   |   __init__.py
+|   |   
+|   \---__pycache__
+|           audio_manager.cpython-311.pyc
+|           background_task.cpython-311.pyc
+|           task_manager.cpython-311.pyc
+|           __init__.cpython-311.pyc
+|           
++---logs
+|       .gitkeep
+|       
++---models
+|       .gitkeep
+|       PPO_2004.pt
+|       
++---players
+|   |   base.py
+|   |   factory.py
+|   |   human.py
+|   |   lookahead.py
+|   |   ppo.py
+|   |   __init__.py
+|   |   
+|   \---__pycache__
+|           base.cpython-311.pyc
+|           factory.cpython-311.pyc
+|           human.cpython-311.pyc
+|           lookahead.cpython-311.pyc
+|           ppo.cpython-311.pyc
+|           __init__.cpython-311.pyc
+|           
++---rendering
+|   |   board_renderer.py
+|   |   __init__.py
+|   |   
+|   \---__pycache__
+|           board_renderer.cpython-311.pyc
+|           __init__.cpython-311.pyc
+|           
++---tests
+|   |   __init__.py
+|   |   
+|   \---manual
+|           test_board_renderer.py
+|           
+\---ui
+    |   theme.py
+    |   __init__.py
+    |   
+    +---screens
+    |   |   about_screen.py
+    |   |   base_screen.py
+    |   |   game_screen.py
+    |   |   main_menu.py
+    |   |   match_setup.py
+    |   |   settings_screen.py
+    |   |   test_menu.py
+    |   |   __init__.py
+    |   |   
+    |   \---__pycache__
+    |           about_screen.cpython-311.pyc
+    |           base_screen.cpython-311.pyc
+    |           game_screen.cpython-311.pyc
+    |           main_menu.cpython-311.pyc
+    |           match_setup.cpython-311.pyc
+    |           settings_screen.cpython-311.pyc
+    |           test_menu.cpython-311.pyc
+    |           __init__.cpython-311.pyc
+    |           
+    +---widgets
+    |   |   button.py
+    |   |   hyperlink.py
+    |   |   selector.py
+    |   |   text_input.py
+    |   |   __init__.py
+    |   |   
+    |   \---__pycache__
+    |           button.cpython-311.pyc
+    |           hyperlink.cpython-311.pyc
+    |           selector.cpython-311.pyc
+    |           text_input.cpython-311.pyc
+    |           __init__.cpython-311.pyc
+    |           
+    \---__pycache__
+            theme.cpython-311.pyc
+            __init__.cpython-311.pyc
+            
