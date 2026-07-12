@@ -1,6 +1,6 @@
 # Connect4_LS
 
-![Connect4_LS title artwork](assets/images/connect4_title.png)
+![Connect4_LS title artwork](assets/images/connect4_title.webp)
 
 A standalone desktop implementation of standard **6 × 7 Connect Four**, built with Python and Pygame.
 
