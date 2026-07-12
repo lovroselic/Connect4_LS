@@ -84,6 +84,8 @@ class BoardRenderer:
         )
 
         self.hovered_column: int | None = None
+        self.selected_column: int | None = None
+
         self._drop_animation: (
             DropAnimation | None
         ) = None
@@ -159,6 +161,7 @@ class BoardRenderer:
         )
 
         self.hovered_column = None
+        self.selected_column = None
 
     def update(
         self,
@@ -264,6 +267,121 @@ class BoardRenderer:
     # Interaction
     # ------------------------------------------------------------------
 
+    def set_selected_column(
+        self,
+        column: int | None,
+        board: Connect4Board,
+    ) -> int | None:
+        """
+        Set the currently selected legal column.
+
+        Passing None clears the selection.
+        """
+        if column is None:
+            self.selected_column = None
+            return None
+
+        column = int(column)
+
+        if (
+            0 <= column < Connect4Board.COLS
+            and not board.is_terminal
+            and board.can_play(column)
+        ):
+            self.selected_column = column
+        else:
+            self.selected_column = None
+
+        return self.selected_column
+
+    def select_first_legal_column(
+        self,
+        board: Connect4Board,
+        *,
+        preferred: int | None = None,
+    ) -> int | None:
+        """
+        Select a legal column, preferring the supplied column or the center.
+        """
+        if board.is_terminal:
+            self.selected_column = None
+            return None
+
+        legal_moves = board.legal_moves()
+
+        if not legal_moves:
+            self.selected_column = None
+            return None
+
+        if (
+            preferred is not None
+            and preferred in legal_moves
+        ):
+            self.selected_column = int(preferred)
+            return self.selected_column
+
+        center = Connect4Board.COLS // 2
+
+        self.selected_column = min(
+            legal_moves,
+            key=lambda column: (
+                abs(column - center),
+                column,
+            ),
+        )
+
+        return self.selected_column
+
+    def move_selection(
+        self,
+        board: Connect4Board,
+        direction: int,
+    ) -> int | None:
+        """
+        Move the selected column left or right, skipping full columns.
+        """
+        if board.is_terminal:
+            self.selected_column = None
+            return None
+
+        legal_moves = sorted(
+            board.legal_moves()
+        )
+
+        if not legal_moves:
+            self.selected_column = None
+            return None
+
+        direction = -1 if direction < 0 else 1
+
+        current = self.selected_column
+
+        if current not in legal_moves:
+            return self.select_first_legal_column(
+                board
+            )
+
+        current_index = legal_moves.index(
+            current
+        )
+
+        next_index = (
+            current_index + direction
+        ) % len(legal_moves)
+
+        self.selected_column = legal_moves[
+            next_index
+        ]
+
+        return self.selected_column
+
+    def clear_selection(self) -> None:
+        """
+        Clear mouse hover and keyboard selection.
+        """
+        self.hovered_column = None
+        self.selected_column = None
+
     def update_hover(
         self,
         mouse_position: tuple[int, int],
@@ -293,6 +411,7 @@ class BoardRenderer:
             self.hovered_column = None
         else:
             self.hovered_column = column
+            self.selected_column = column
 
         return self.hovered_column
 
@@ -351,16 +470,16 @@ class BoardRenderer:
 
         elif (
             preview_player is not None
-            and self.hovered_column is not None
+            and self.selected_column is not None
             and board.can_play(
-                self.hovered_column
+                self.selected_column
             )
         ):
             self._draw_preview(
                 surface,
                 board,
                 preview_player,
-                self.hovered_column,
+                self.selected_column,
             )
 
         # Do not reveal the winning line before the final disc lands.
@@ -371,6 +490,17 @@ class BoardRenderer:
             self._draw_winning_cells(
                 surface,
                 board,
+            )
+
+        if (
+            preview_player is not None
+            and self.selected_column is not None
+            and not self.is_animating
+        ):
+            self._draw_selected_column_marker(
+                surface,
+                self.selected_column,
+                preview_player,
             )
 
         if show_column_numbers:
@@ -756,6 +886,62 @@ class BoardRenderer:
                 radius,
                 width=width,
             )
+
+    def _draw_selected_column_marker(
+        self,
+        surface: pygame.Surface,
+        column: int,
+        player: int,
+    ) -> None:
+        """
+        Draw a small marker above the keyboard-selected column.
+        """
+        column_rect = self.layout.column_rects[
+            column
+        ]
+
+        center_x = column_rect.centerx
+        tip_y = self.layout.board_rect.top - 7
+
+        marker_size = max(
+            8,
+            self.layout.cell_size // 7,
+        )
+
+        color = self._piece_color(
+            player
+        )
+
+        points = (
+            (
+                center_x,
+                tip_y,
+            ),
+            (
+                center_x - marker_size,
+                tip_y - marker_size,
+            ),
+            (
+                center_x + marker_size,
+                tip_y - marker_size,
+            ),
+        )
+
+        pygame.draw.polygon(
+            surface,
+            color,
+            points,
+        )
+
+        pygame.draw.polygon(
+            surface,
+            THEME.board_cell_border,
+            points,
+            width=max(
+                1,
+                self.layout.cell_size // 30,
+            ),
+        )
 
     def _draw_column_numbers(
         self,
