@@ -68,6 +68,11 @@ class SettingsScreen(BaseScreen):
         1500,
     )
 
+    VOLUME_OPTIONS = tuple(
+        value / 10
+        for value in range(0, 11)
+    )
+
     def __init__(self, application) -> None:
         super().__init__(application)
 
@@ -123,6 +128,20 @@ class SettingsScreen(BaseScreen):
             ),
         )
 
+        self.sound_selector = Selector(
+            rect=(0, 0, 260, 44),
+            options=self.BOOLEAN_OPTIONS,
+            formatter=self._format_enabled,
+        )
+
+        self.volume_selector = Selector(
+            rect=(0, 0, 260, 44),
+            options=self.VOLUME_OPTIONS,
+            formatter=lambda value: (
+                f"{round(value * 100):d}%"
+            ),
+        )
+
         self.setting_rows = [
             (
                 "Resolution",
@@ -151,6 +170,14 @@ class SettingsScreen(BaseScreen):
             (
                 "AI move delay",
                 self.ai_delay_selector,
+            ),
+            (
+                "Sound",
+                self.sound_selector,
+            ),
+            (
+                "Master volume",
+                self.volume_selector,
             ),
         ]
 
@@ -295,13 +322,13 @@ class SettingsScreen(BaseScreen):
         self.draw_title(
             surface,
             "Settings",
-            y=55,
+            y=42,
         )
 
         self.draw_subtitle(
             surface,
             "Configure the application, then apply and save.",
-            y=100,
+            y=82,
         )
 
         self._draw_settings_panel(
@@ -345,11 +372,12 @@ class SettingsScreen(BaseScreen):
             bold=True,
         )
 
-        row_height = 54
+        row_height = 48
+
         start_y = (
             self.settings_panel.top
             + THEME.panel_padding
-            + 22
+            + 20
         )
 
         label_x = (
@@ -388,12 +416,10 @@ class SettingsScreen(BaseScreen):
                     width=1,
                 )
 
-            label_surface = (
-                label_font.render(
-                    label,
-                    True,
-                    THEME.text_primary,
-                )
+            label_surface = label_font.render(
+                label,
+                True,
+                THEME.text_primary,
             )
 
             label_rect = (
@@ -438,7 +464,7 @@ class SettingsScreen(BaseScreen):
             status_surface.get_rect(
                 center=(
                     self.width // 2,
-                    self.height - 78,
+                    self.height - 68,
                 )
             )
         )
@@ -462,8 +488,8 @@ class SettingsScreen(BaseScreen):
         )
 
         panel_height = min(
-            430,
-            self.height - 255,
+            500,
+            self.height - 230,
         )
 
         self.settings_panel = pygame.Rect(
@@ -475,7 +501,7 @@ class SettingsScreen(BaseScreen):
 
         self.settings_panel.midtop = (
             self.width // 2,
-            135,
+            105,
         )
 
         selector_width = min(
@@ -486,13 +512,13 @@ class SettingsScreen(BaseScreen):
             ),
         )
 
-        selector_height = 42
-        row_height = 54
+        selector_height = 40
+        row_height = 48
 
         start_y = (
             self.settings_panel.top
             + THEME.panel_padding
-            + 22
+            + 20
         )
 
         selector_x = (
@@ -521,7 +547,7 @@ class SettingsScreen(BaseScreen):
 
         buttons_y = (
             self.settings_panel.bottom
-            + 22
+            + 16
         )
 
         button_gap = 18
@@ -571,7 +597,8 @@ class SettingsScreen(BaseScreen):
 
         except Exception as error:
             self.status_text = (
-                f"Could not apply settings: {error}"
+                "Could not apply settings: "
+                f"{error}"
             )
 
             self.status_is_error = True
@@ -616,13 +643,8 @@ class SettingsScreen(BaseScreen):
             self.resolution_selector.value
         )
 
-        self.draft_config.window_width = (
-            width
-        )
-
-        self.draft_config.window_height = (
-            height
-        )
+        self.draft_config.window_width = width
+        self.draft_config.window_height = height
 
         self.draft_config.fullscreen = (
             self.fullscreen_selector.value
@@ -648,6 +670,14 @@ class SettingsScreen(BaseScreen):
             self.ai_delay_selector.value
         )
 
+        self.draft_config.sound_enabled = (
+            self.sound_selector.value
+        )
+
+        self.draft_config.master_volume = (
+            self.volume_selector.value
+        )
+
         self.draft_config.validate()
 
     def _load_selectors_from_config(
@@ -660,8 +690,10 @@ class SettingsScreen(BaseScreen):
         )
 
         if resolution not in self.RESOLUTIONS:
-            resolution = self._nearest_resolution(
-                resolution
+            resolution = (
+                self._nearest_resolution(
+                    resolution
+                )
             )
 
         self.resolution_selector.set_value(
@@ -708,6 +740,19 @@ class SettingsScreen(BaseScreen):
             self._nearest_value(
                 config.ai_move_delay_ms,
                 self.AI_DELAY_OPTIONS,
+            ),
+            notify=False,
+        )
+
+        self.sound_selector.set_value(
+            bool(config.sound_enabled),
+            notify=False,
+        )
+
+        self.volume_selector.set_value(
+            self._nearest_value(
+                config.master_volume,
+                self.VOLUME_OPTIONS,
             ),
             notify=False,
         )

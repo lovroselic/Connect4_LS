@@ -32,6 +32,19 @@ class AIWorkerResult:
     move_result: MoveResult | None
 
 
+@dataclass(frozen=True, slots=True)
+class HintWorkerResult:
+    """
+    LA13 hint calculated from an immutable board copy.
+    """
+
+    match_identity: int
+    generation: int
+    player_id: int
+    expected_move_count: int
+    move_result: MoveResult | None
+
+
 @dataclass(slots=True)
 class SessionScore:
     """
@@ -103,6 +116,12 @@ class GameScreen(BaseScreen):
             .create_task()
         )
 
+        self.hint_task = (
+            self.application
+            .task_manager
+            .create_task()
+        )
+
         self.session_score = SessionScore()
         self._current_result_recorded = False
 
@@ -167,6 +186,18 @@ class GameScreen(BaseScreen):
             visible=False,
         )
 
+        self.hint_button = Button(
+            rect=(
+                0,
+                0,
+                THEME.small_button_width,
+                THEME.small_button_height,
+            ),
+            text="Hint (LA13)",
+            callback=self._request_hint,
+            visible=False,
+        )
+
         self.play_again_button = Button(
             rect=(
                 0,
@@ -196,6 +227,7 @@ class GameScreen(BaseScreen):
             self.restart_button,
             self.pause_button,
             self.step_button,
+            self.hint_button,
             self.reset_score_button,
         ]
 
@@ -238,6 +270,11 @@ class GameScreen(BaseScreen):
 
         self._generation = 0
         self._ai_result_consumed = True
+        self._hint_result_consumed = True
+
+        self._hint_column: int | None = None
+        self._hint_analysis = None
+        self._pending_win_sound = False
 
         self.refresh_layout()
 
@@ -255,6 +292,7 @@ class GameScreen(BaseScreen):
         Assign a newly configured match and reset the session score.
         """
         self._invalidate_ai_result()
+        self._invalidate_hint_result()
         self.board_renderer.cancel_animation()
         self._set_overlay_visible(False)
 
@@ -276,6 +314,7 @@ class GameScreen(BaseScreen):
         self._refresh_ai_control_state()
 
         self._last_move = None
+        self._clear_hint()
         self._error_message = ""
         self._ai_delay_elapsed_ms = 0.0
 
@@ -301,12 +340,14 @@ class GameScreen(BaseScreen):
 
         self._refresh_overlay_state()
         self._refresh_ai_control_state()
+        self._refresh_hint_button_state()
         self._ensure_human_column_selection()
 
     def on_exit(self) -> None:
         self.board_renderer.clear_selection()
         self.board_renderer.cancel_animation()
         self._invalidate_ai_result()
+        self._invalidate_hint_result()
         self._set_overlay_visible(False)
 
     # ------------------------------------------------------------------
@@ -433,14 +474,28 @@ class GameScreen(BaseScreen):
     ) -> None:
         mouse_position = pygame.mouse.get_pos()
 
+        was_animating = (
+            self.board_renderer.is_animating
+        )
+
         self.board_renderer.update(
             delta_time
             * self.config.animation_speed
         )
 
+        if (
+            was_animating
+            and not self.board_renderer.is_animating
+            and self._pending_win_sound
+        ):
+            self.application.audio.play_win()
+            self._pending_win_sound = False
+
         self._consume_ai_task_if_ready()
+        self._consume_hint_task_if_ready()
         self._refresh_overlay_state()
         self._refresh_ai_control_state()
+        self._refresh_hint_button_state()
 
         if self._game_over_overlay_visible():
             for button in self.overlay_buttons:
@@ -463,6 +518,7 @@ class GameScreen(BaseScreen):
             self.match.is_running
             and self.match.current_player.is_human
             and not self.ai_task.is_running
+            and not self.hint_task.is_running
             and not self.board_renderer.is_animating
         )
 
@@ -727,6 +783,9 @@ class GameScreen(BaseScreen):
         self,
         turn: TurnResult,
     ) -> None:
+        self._clear_hint()
+        self._invalidate_hint_result()
+
         self._last_move = turn
         self._error_message = ""
         self._ai_delay_elapsed_ms = 0.0
@@ -737,10 +796,233 @@ class GameScreen(BaseScreen):
             player=turn.move.player,
         )
 
+        self.application.audio.play_disc_drop()
+
         self.board_renderer.selected_column = None
 
         if turn.match_finished:
             self._record_finished_match()
+
+            self._pending_win_sound = (
+                self.match is not None
+                and self.match.result is not None
+                and self.match.result.winner is not None
+            )
+
+    # ------------------------------------------------------------------
+    # LA13 hint
+    # ------------------------------------------------------------------
+
+    def _hint_available(self) -> bool:
+        return (
+            self.match is not None
+            and self.match.is_running
+            and self.match.current_player.is_human
+            and not self.ai_task.is_running
+            and not self.hint_task.is_running
+            and not self.board_renderer.is_animating
+            and not self._game_over_overlay_visible()
+        )
+
+    def _request_hint(self) -> None:
+        if not self._hint_available():
+            return
+
+        assert self.match is not None
+
+        if self.hint_task.is_done:
+            self.hint_task.clear()
+
+        self._clear_hint()
+
+        match = self.match
+        board_copy = match.board.copy()
+
+        match_identity = id(match)
+        generation = self._generation
+        player_id = match.board.current_player
+        expected_move_count = (
+            match.board.move_count
+        )
+
+        analyzer = (
+            self.application
+            .player_factory
+            .create_lookahead_analyzer(
+                player_id=player_id,
+                depth=13,
+            )
+        )
+
+        def calculate_hint() -> HintWorkerResult:
+            move_result = analyzer.choose_move(
+                board_copy
+            )
+
+            return HintWorkerResult(
+                match_identity=match_identity,
+                generation=generation,
+                player_id=player_id,
+                expected_move_count=(
+                    expected_move_count
+                ),
+                move_result=move_result,
+            )
+
+        self._hint_result_consumed = False
+
+        started = self.hint_task.start(
+            calculate_hint
+        )
+
+        if not started:
+            self._hint_result_consumed = True
+            self._error_message = (
+                "Could not start LA13 hint."
+            )
+
+    def _consume_hint_task_if_ready(
+        self,
+    ) -> None:
+        if not self.hint_task.is_done:
+            return
+
+        if self._hint_result_consumed:
+            return
+
+        self._hint_result_consumed = True
+
+        exception = self.hint_task.exception()
+
+        if exception is not None:
+            self._error_message = (
+                "Hint failed: "
+                f"{type(exception).__name__}: "
+                f"{exception}"
+            )
+
+            self.hint_task.clear()
+            return
+
+        try:
+            worker_result = (
+                self.hint_task.result()
+            )
+        except Exception as error:
+            self._error_message = (
+                "Hint failed: "
+                f"{type(error).__name__}: "
+                f"{error}"
+            )
+
+            self.hint_task.clear()
+            return
+
+        self.hint_task.clear()
+
+        if worker_result is None:
+            return
+
+        if self.match is None:
+            return
+
+        if (
+            worker_result.match_identity
+            != id(self.match)
+        ):
+            return
+
+        if (
+            worker_result.generation
+            != self._generation
+        ):
+            return
+
+        if not self.match.is_running:
+            return
+
+        if (
+            self.match.board.move_count
+            != worker_result.expected_move_count
+        ):
+            return
+
+        if (
+            self.match.board.current_player
+            != worker_result.player_id
+        ):
+            return
+
+        move_result = (
+            worker_result.move_result
+        )
+
+        if move_result is None:
+            self._error_message = (
+                "LA13 returned no hint."
+            )
+            return
+
+        if not self.match.board.can_play(
+            move_result.column
+        ):
+            self._error_message = (
+                "LA13 returned an illegal hint."
+            )
+            return
+
+        self._hint_column = int(
+            move_result.column
+        )
+
+        self._hint_analysis = (
+            move_result.analysis
+        )
+
+        self.board_renderer.set_selected_column(
+            self._hint_column,
+            self.match.board,
+        )
+
+        self._error_message = ""
+
+    def _refresh_hint_button_state(
+        self,
+    ) -> None:
+        visible = (
+            self.match is not None
+            and self.match.is_running
+            and self.match.current_player.is_human
+            and not self._game_over_overlay_visible()
+        )
+
+        self.hint_button.set_visible(
+            visible
+        )
+
+        self.hint_button.set_enabled(
+            visible
+            and not self.ai_task.is_running
+            and not self.hint_task.is_running
+            and not self.board_renderer.is_animating
+        )
+
+        self.hint_button.set_text(
+            "Thinking..."
+            if self.hint_task.is_running
+            else "Hint (LA13)"
+        )
+
+    def _clear_hint(self) -> None:
+        self._hint_column = None
+        self._hint_analysis = None
+
+    def _invalidate_hint_result(self) -> None:
+        self._clear_hint()
+
+        if self.hint_task.is_done:
+            self._hint_result_consumed = True
+            self.hint_task.clear()
 
     # ------------------------------------------------------------------
     # Human keyboard controls
@@ -752,6 +1034,7 @@ class GameScreen(BaseScreen):
             and self.match.is_running
             and self.match.current_player.is_human
             and not self.ai_task.is_running
+            and not self.hint_task.is_running
             and not self.board_renderer.is_animating
             and not self._game_over_overlay_visible()
         )
@@ -1143,7 +1426,13 @@ class GameScreen(BaseScreen):
 
         self._draw_status(surface)
         self._draw_session_summary(surface)
-        self._draw_analysis(surface)
+        if (
+            self.hint_task.is_running
+            or self._hint_column is not None
+        ):
+            self._draw_hint_analysis(surface)
+        else:
+            self._draw_analysis(surface)
 
         for button in self.game_buttons:
             button.draw(surface)
@@ -1383,7 +1672,7 @@ class GameScreen(BaseScreen):
         text_rect = text_surface.get_rect(
             center=(
                 self.width // 2,
-                self.height - 122,
+                self.height - 114,
             )
         )
 
@@ -1441,6 +1730,18 @@ class GameScreen(BaseScreen):
 
         lines: list[str] = []
 
+        if analysis.selected_column is not None:
+            lines.append(
+                "Column: "
+                f"{analysis.selected_column + 1}"
+            )
+
+        if analysis.evaluation is not None:
+            lines.append(
+                "Score: "
+                f"{analysis.evaluation:,.1f}"
+            )
+
         if analysis.search_depth is not None:
             lines.append(
                 f"Depth: {analysis.search_depth}"
@@ -1491,7 +1792,71 @@ class GameScreen(BaseScreen):
         text_rect = text_surface.get_rect(
             center=(
                 self.width // 2,
-                self.height - 68,
+                self.board_renderer.layout.board_rect.bottom + 34,
+            )
+        )
+
+        surface.blit(
+            text_surface,
+            text_rect,
+        )
+
+    def _draw_hint_analysis(
+        self,
+        surface: pygame.Surface,
+    ) -> None:
+        if self.hint_task.is_running:
+            text = "LA13 is calculating a hint..."
+            color = THEME.warning
+
+        elif (
+            self._hint_column is not None
+            and self._hint_analysis is not None
+        ):
+            analysis = self._hint_analysis
+
+            parts = [
+                "Hint: column "
+                f"{self._hint_column + 1}",
+            ]
+
+            if analysis.evaluation is not None:
+                parts.append(
+                    "score "
+                    f"{analysis.evaluation:,.1f}"
+                )
+
+            if analysis.search_depth is not None:
+                parts.append(
+                    f"depth {analysis.search_depth}"
+                )
+
+            if analysis.elapsed_seconds > 0.0:
+                parts.append(
+                    f"{analysis.elapsed_seconds:.3f} s"
+                )
+
+            text = "  ·  ".join(parts)
+            color = THEME.success
+
+        else:
+            return
+
+        font = FONTS.get(
+            THEME.font_small,
+            bold=True,
+        )
+
+        text_surface = font.render(
+            text,
+            True,
+            color,
+        )
+
+        text_rect = text_surface.get_rect(
+            center=(
+                self.width // 2,
+                self.board_renderer.layout.board_rect.bottom + 34,
             )
         )
 
@@ -1802,9 +2167,16 @@ class GameScreen(BaseScreen):
             bottom_button_y,
         )
 
+        self.hint_button.set_position(
+            self.width // 2
+            - control_width
+            - control_gap // 2,
+            bottom_button_y,
+        )
+
         self.reset_score_button.set_position(
-            controls_left
-            + (control_width + control_gap) * 2,
+            self.width // 2
+            + control_gap // 2,
             bottom_button_y,
         )
 
@@ -1897,6 +2269,7 @@ class GameScreen(BaseScreen):
             return
 
         self._invalidate_ai_result()
+        self._invalidate_hint_result()
         self.board_renderer.cancel_animation()
         self.board_renderer.clear_selection()
         self._set_overlay_visible(False)
@@ -1906,8 +2279,10 @@ class GameScreen(BaseScreen):
         self._ai_paused = False
         self._step_requested = False
         self._refresh_ai_control_state()
+        self._refresh_hint_button_state()
 
         self._current_result_recorded = False
+        self._pending_win_sound = False
         self._last_move = None
         self._error_message = ""
         self._ai_delay_elapsed_ms = 0.0
@@ -1922,7 +2297,9 @@ class GameScreen(BaseScreen):
 
         self._ai_paused = False
         self._step_requested = False
+        self._pending_win_sound = False
         self._refresh_ai_control_state()
+        self._refresh_hint_button_state()
 
         if (
             self.match is not None

@@ -94,6 +94,10 @@ class PlayerFactory:
                 player_id=player_id,
                 config=config_copy,
                 engine=self._get_lookahead_engine(),
+                include_action_scores=True,
+                action_score_depth=(
+                    config_copy.lookahead_depth
+                ),
             )
 
         if config_copy.player_type is PlayerType.PPO:
@@ -118,6 +122,39 @@ class PlayerFactory:
         raise ValueError(
             f"Unsupported player type: "
             f"{config_copy.player_type!r}"
+        )
+
+    def create_lookahead_analyzer(
+        self,
+        *,
+        player_id: int,
+        depth: int = 13,
+    ) -> LookaheadPlayer:
+        """
+        Create a temporary Lookahead player for hints and analysis.
+
+        The shared warmed-up engine is reused. The returned player calculates
+        per-column action scores and stores the selected move's score in
+        MoveAnalysis.evaluation.
+        """
+        self.warm_up_lookahead()
+
+        config = PlayerConfig(
+            player_type=PlayerType.LOOKAHEAD,
+            name=f"LA{int(depth)} Hint",
+            lookahead_depth=depth,
+        )
+
+        config.validate()
+
+        return LookaheadPlayer(
+            player_id=player_id,
+            config=config,
+            engine=self._get_lookahead_engine(),
+            include_action_scores=True,
+            action_score_depth=(
+                config.lookahead_depth
+            ),
         )
 
     def create_pair(

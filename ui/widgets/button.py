@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Optional
+from typing import ClassVar, Optional
 
 import pygame
 
@@ -12,15 +12,13 @@ from ui.theme import FONTS, THEME, Color
 
 
 ButtonCallback = Callable[[], None]
+ActivationSoundCallback = Callable[[], None]
 
 
 @dataclass(slots=True)
 class ButtonStyle:
     """
     Visual settings for a button.
-
-    Individual buttons may supply a custom style, while most buttons can use
-    the shared defaults returned by default_button_style().
     """
 
     background: Color
@@ -63,19 +61,27 @@ class Button:
     """
     Reusable Pygame button.
 
-    The button processes mouse events, tracks hover and pressed states, draws
-    itself, and invokes an optional callback when clicked.
+    A shared activation-sound callback may be registered by the application.
     """
+
+    _activation_sound_callback: ClassVar[
+        ActivationSoundCallback | None
+    ] = None
 
     def __init__(
         self,
-        rect: pygame.Rect | tuple[int, int, int, int],
+        rect: pygame.Rect
+        | tuple[int, int, int, int],
         text: str,
-        callback: Optional[ButtonCallback] = None,
+        callback: Optional[
+            ButtonCallback
+        ] = None,
         *,
         enabled: bool = True,
         visible: bool = True,
-        style: Optional[ButtonStyle] = None,
+        style: Optional[
+            ButtonStyle
+        ] = None,
     ) -> None:
         self.rect = pygame.Rect(rect)
         self.text = str(text)
@@ -84,7 +90,10 @@ class Button:
         self.enabled = bool(enabled)
         self.visible = bool(visible)
 
-        self.style = style or default_button_style()
+        self.style = (
+            style
+            or default_button_style()
+        )
 
         self.hovered = False
         self.pressed = False
@@ -92,34 +101,62 @@ class Button:
         self._pressed_inside = False
         self._last_click_time_ms = 0
 
-    def handle_event(self, event: pygame.event.Event) -> bool:
+    @classmethod
+    def set_activation_sound_callback(
+        cls,
+        callback: ActivationSoundCallback
+        | None,
+    ) -> None:
+        """
+        Set the sound callback used by every Button instance.
+        """
+        cls._activation_sound_callback = (
+            callback
+        )
+
+    def handle_event(
+        self,
+        event: pygame.event.Event,
+    ) -> bool:
         """
         Process a Pygame event.
 
-        Returns
-        -------
-        bool
-            True when the event was consumed by the button.
+        Returns True when the event was consumed.
         """
-        if not self.visible or not self.enabled:
+        if (
+            not self.visible
+            or not self.enabled
+        ):
             self.hovered = False
             self.pressed = False
             self._pressed_inside = False
             return False
 
         if event.type == pygame.MOUSEMOTION:
-            self.hovered = self.rect.collidepoint(event.pos)
+            self.hovered = (
+                self.rect.collidepoint(
+                    event.pos
+                )
+            )
 
-            if not self.hovered and self._pressed_inside:
+            if (
+                not self.hovered
+                and self._pressed_inside
+            ):
                 self.pressed = False
 
             return self.hovered
 
-        if event.type == pygame.MOUSEBUTTONDOWN:
+        if (
+            event.type
+            == pygame.MOUSEBUTTONDOWN
+        ):
             if event.button != 1:
                 return False
 
-            if self.rect.collidepoint(event.pos):
+            if self.rect.collidepoint(
+                event.pos
+            ):
                 self.hovered = True
                 self.pressed = True
                 self._pressed_inside = True
@@ -127,17 +164,30 @@ class Button:
 
             return False
 
-        if event.type == pygame.MOUSEBUTTONUP:
+        if (
+            event.type
+            == pygame.MOUSEBUTTONUP
+        ):
             if event.button != 1:
                 return False
 
-            was_pressed_inside = self._pressed_inside
+            was_pressed_inside = (
+                self._pressed_inside
+            )
 
-            self.hovered = self.rect.collidepoint(event.pos)
+            self.hovered = (
+                self.rect.collidepoint(
+                    event.pos
+                )
+            )
+
             self.pressed = False
             self._pressed_inside = False
 
-            if was_pressed_inside and self.hovered:
+            if (
+                was_pressed_inside
+                and self.hovered
+            ):
                 self.activate()
                 return True
 
@@ -145,42 +195,72 @@ class Button:
 
         return False
 
-    def update(self, mouse_pos: tuple[int, int]) -> None:
+    def update(
+        self,
+        mouse_pos: tuple[int, int],
+    ) -> None:
         """
-        Update hover state from the current mouse position.
-
-        This keeps the visual state correct even when the mouse moves while
-        no MOUSEMOTION event is processed by the current screen.
+        Update hover state.
         """
-        if not self.visible or not self.enabled:
+        if (
+            not self.visible
+            or not self.enabled
+        ):
             self.hovered = False
             self.pressed = False
             self._pressed_inside = False
             return
 
-        self.hovered = self.rect.collidepoint(mouse_pos)
+        self.hovered = (
+            self.rect.collidepoint(
+                mouse_pos
+            )
+        )
 
     def activate(self) -> None:
         """
-        Trigger the button callback when the button is enabled and visible.
+        Trigger the button sound and callback.
         """
-        if not self.visible or not self.enabled:
+        if (
+            not self.visible
+            or not self.enabled
+        ):
             return
 
-        self._last_click_time_ms = pygame.time.get_ticks()
+        self._last_click_time_ms = (
+            pygame.time.get_ticks()
+        )
+
+        sound_callback = (
+            type(self)
+            ._activation_sound_callback
+        )
+
+        if sound_callback is not None:
+            try:
+                sound_callback()
+            except Exception:
+                pass
 
         if self.callback is not None:
             self.callback()
 
-    def draw(self, surface: pygame.Surface) -> None:
+    def draw(
+        self,
+        surface: pygame.Surface,
+    ) -> None:
         """
-        Draw the button on the given surface.
+        Draw the button.
         """
         if not self.visible:
             return
 
-        background = self._current_background()
+        background = (
+            self._current_background()
+        )
+
         border = self._current_border()
+
         text_color = (
             self.style.text
             if self.enabled
@@ -191,7 +271,9 @@ class Button:
             surface,
             background,
             self.rect,
-            border_radius=self.style.border_radius,
+            border_radius=(
+                self.style.border_radius
+            ),
         )
 
         if self.style.border_width > 0:
@@ -199,8 +281,12 @@ class Button:
                 surface,
                 border,
                 self.rect,
-                width=self.style.border_width,
-                border_radius=self.style.border_radius,
+                width=(
+                    self.style.border_width
+                ),
+                border_radius=(
+                    self.style.border_radius
+                ),
             )
 
         font = FONTS.get(
@@ -214,16 +300,21 @@ class Button:
             text_color,
         )
 
-        text_rect = text_surface.get_rect(
-            center=self.rect.center,
+        text_rect = (
+            text_surface.get_rect(
+                center=self.rect.center,
+            )
         )
 
-        surface.blit(text_surface, text_rect)
+        surface.blit(
+            text_surface,
+            text_rect,
+        )
 
-    def set_enabled(self, enabled: bool) -> None:
-        """
-        Enable or disable the button.
-        """
+    def set_enabled(
+        self,
+        enabled: bool,
+    ) -> None:
         self.enabled = bool(enabled)
 
         if not self.enabled:
@@ -231,10 +322,10 @@ class Button:
             self.pressed = False
             self._pressed_inside = False
 
-    def set_visible(self, visible: bool) -> None:
-        """
-        Show or hide the button.
-        """
+    def set_visible(
+        self,
+        visible: bool,
+    ) -> None:
         self.visible = bool(visible)
 
         if not self.visible:
@@ -242,53 +333,81 @@ class Button:
             self.pressed = False
             self._pressed_inside = False
 
-    def set_text(self, text: str) -> None:
-        """
-        Change the displayed button label.
-        """
+    def set_text(
+        self,
+        text: str,
+    ) -> None:
         self.text = str(text)
 
-    def set_position(self, x: int, y: int) -> None:
-        """
-        Move the button while keeping its current size.
-        """
-        self.rect.topleft = (int(x), int(y))
+    def set_position(
+        self,
+        x: int,
+        y: int,
+    ) -> None:
+        self.rect.topleft = (
+            int(x),
+            int(y),
+        )
 
-    def set_center(self, x: int, y: int) -> None:
-        """
-        Move the button so its centre matches the supplied position.
-        """
-        self.rect.center = (int(x), int(y))
+    def set_center(
+        self,
+        x: int,
+        y: int,
+    ) -> None:
+        self.rect.center = (
+            int(x),
+            int(y),
+        )
 
-    def set_size(self, width: int, height: int) -> None:
-        """
-        Resize the button while preserving its top-left position.
-        """
+    def set_size(
+        self,
+        width: int,
+        height: int,
+    ) -> None:
         self.rect.size = (
             max(1, int(width)),
             max(1, int(height)),
         )
 
-    def contains_point(self, point: tuple[int, int]) -> bool:
-        """
-        Return True when the point lies inside the button.
-        """
-        return self.visible and self.rect.collidepoint(point)
+    def contains_point(
+        self,
+        point: tuple[int, int],
+    ) -> bool:
+        return (
+            self.visible
+            and self.rect.collidepoint(
+                point
+            )
+        )
 
     def _current_background(self) -> Color:
         if not self.enabled:
-            return self.style.background_disabled
+            return (
+                self.style
+                .background_disabled
+            )
 
         if self.pressed:
-            return self.style.background_pressed
+            return (
+                self.style
+                .background_pressed
+            )
 
         if self.hovered:
-            return self.style.background_hover
+            return (
+                self.style
+                .background_hover
+            )
 
         return self.style.background
 
     def _current_border(self) -> Color:
-        if self.enabled and self.hovered:
-            return self.style.border_hover
+        if (
+            self.enabled
+            and self.hovered
+        ):
+            return (
+                self.style.border_hover
+            )
 
         return self.style.border

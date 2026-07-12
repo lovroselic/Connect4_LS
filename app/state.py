@@ -16,6 +16,7 @@ class ScreenID(Enum):
     MATCH_SETUP = auto()
     GAME = auto()
     SETTINGS = auto()
+    ABOUT = auto()
     TEST_MENU = auto()
 
 

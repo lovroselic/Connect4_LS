@@ -9,13 +9,16 @@ from app.config import AppConfig
 from app.state import AppState, ScreenID
 from game.match import Connect4Match, StartingPlayerMode
 from infrastructure import TaskManager
+from infrastructure.audio_manager import AudioManager
 from players import PlayerConfig, PlayerFactory
 from ui.screens.game_screen import GameScreen
 from ui.screens.main_menu import MainMenuScreen
+from ui.screens.about_screen import AboutScreen
 from ui.screens.match_setup import MatchSetupScreen
 from ui.screens.settings_screen import SettingsScreen
 from ui.screens.test_menu import TestMenuScreen
 from ui.theme import FONTS
+from ui.widgets.button import Button
 
 
 class Application:
@@ -36,6 +39,15 @@ class Application:
         self.state = AppState()
 
         pygame.init()
+
+        self.audio = AudioManager(
+            enabled=self.config.sound_enabled,
+            master_volume=self.config.master_volume,
+        )
+
+        Button.set_activation_sound_callback(
+            self.audio.play_button_click
+        )
 
         self.task_manager = TaskManager(
             maximum_workers=1,
@@ -58,6 +70,7 @@ class Application:
             ScreenID.MATCH_SETUP: MatchSetupScreen(self),
             ScreenID.GAME: GameScreen(self),
             ScreenID.SETTINGS: SettingsScreen(self),
+            ScreenID.ABOUT: AboutScreen(self),
         }
 
         if self.config.show_test_menu:
@@ -312,6 +325,14 @@ class Application:
             new_config.ai_move_delay_ms
         )
 
+        self.config.sound_enabled = (
+            new_config.sound_enabled
+        )
+
+        self.config.master_volume = (
+            new_config.master_volume
+        )
+
         self.config.window_title = (
             new_config.window_title
         )
@@ -323,6 +344,11 @@ class Application:
 
         pygame.display.set_caption(
             f"{self.config.window_title} v{__version__}"
+        )
+
+        self.audio.apply_config(
+            enabled=self.config.sound_enabled,
+            master_volume=self.config.master_volume,
         )
 
         if save:

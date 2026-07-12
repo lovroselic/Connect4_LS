@@ -107,10 +107,6 @@ class LookaheadPlayer(Player):
             depth=self.depth,
         )
 
-        elapsed_seconds = (
-            perf_counter() - started_at
-        )
-
         if self._cancel_requested:
             return None
 
@@ -142,9 +138,26 @@ class LookaheadPlayer(Player):
                 for score in raw_scores
             )
 
+        elapsed_seconds = (
+            perf_counter() - started_at
+        )
+
+        evaluation = None
+
+        if action_scores is not None:
+            selected_score = action_scores[
+                column
+            ]
+
+            if np.isfinite(selected_score):
+                evaluation = float(
+                    selected_score
+                )
+
         analysis = MoveAnalysis(
             selected_column=column,
             elapsed_seconds=elapsed_seconds,
+            evaluation=evaluation,
             search_depth=self.depth,
             action_scores=action_scores,
             message=(
