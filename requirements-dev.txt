@@ -1,0 +1,5 @@
+# Connect4_LS development and packaging dependencies
+# Install after requirements.txt
+
+pytest
+pyinstaller==6.21.0

@@ -1,6 +1,7 @@
-pygame
-numpy
-numba
-torch
-pytest
-pyinstaller
+# Connect4_LS runtime dependencies
+# Tested with Python 3.11.15
+
+pygame==2.6.1
+numpy==2.4.6
+numba==0.65.1
+torch==2.13.0+cpu

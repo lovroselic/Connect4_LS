@@ -42,7 +42,9 @@ $RequiredFiles = @(
     (Join-Path $ProjectRoot "assets\audio\win.mp3"),
     (Join-Path $ProjectRoot "assets\images\connect4_title.webp"),
     (Join-Path $ProjectRoot "config\lookahead.json"),
-    (Join-Path $ProjectRoot "config\settings.json")
+    (Join-Path $ProjectRoot "config\settings.json"),
+    (Join-Path $ProjectRoot "LICENSE"),
+    (Join-Path $ProjectRoot "CHANGELOG.md")
 )
 
 foreach ($RequiredFile in $RequiredFiles) {
@@ -112,6 +114,19 @@ if ($BuildExitCode -ne 0) {
 if (-not (Test-Path $ExecutablePath -PathType Leaf)) {
     throw "Executable not found after build: $ExecutablePath"
 }
+
+Write-Host ""
+Write-Host "Adding release documentation..."
+
+Copy-Item `
+    -Path (Join-Path $ProjectRoot "LICENSE") `
+    -Destination (Join-Path $ReleaseDirectory "LICENSE") `
+    -Force
+
+Copy-Item `
+    -Path (Join-Path $ProjectRoot "CHANGELOG.md") `
+    -Destination (Join-Path $ReleaseDirectory "CHANGELOG.md") `
+    -Force
 
 Write-Host ""
 Write-Host "Creating portable ZIP..."
